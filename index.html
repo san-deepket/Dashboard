@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Rathor Task Tracker</title>
+<title>Rathour Task Tracker</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -172,7 +172,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 <canvas id="bg" aria-hidden="true"></canvas>
 <div class="app">
   <header class="mast"><div class="mast-in">
-    <div class="brand"><b>Prof. Sandeep Rathor</b><span>Professor &amp; Head · Task Tracker</span></div>
+    <div class="brand"><b>Sandeep Rathour</b><span>Professor &amp; Head · Task Tracker</span></div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
     <div class="clock" aria-label="Current time"><b id="clk">--:--:-- --</b><span id="clkd"></span></div>
     <div class="acts">
@@ -250,18 +250,20 @@ function closeModal(){$('#layer').innerHTML=''}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 
 function taskForm(t,presetDue){
-  const isNew=!t; t=t||{task:'',details:'',due:presetDue||'',assigned:'',status:'Pending',priority:'Normal',remark:'',entered:today(),alarmAt:'',repeat:'none'};
+  const isNew=!t; t=t||{task:'',details:'',due:presetDue||'',assigned:'',status:'Pending',priority:'Normal',remark:'',entered:today(),alarmAt:'',repeat:'none',startTime:'',endTime:''};
   openModal(`<h3>${isNew?'Add task':'Edit task'}</h3>
   <form id="tf" novalidate>
    <div class="fld full"><label for="f_task">Task / Activity</label><input id="f_task" maxlength="140" value="${esc(t.task)}" placeholder="e.g. Cloud Track Launching Program"><div class="err" id="e_task"></div></div>
    <div class="fld full"><label for="f_details">Details (optional)</label><textarea id="f_details" rows="2" maxlength="600">${esc(t.details)}</textarea></div>
    <div class="fld"><label for="f_due">Due date</label><input type="date" id="f_due" value="${esc(t.due)}"><div class="err" id="e_due"></div></div>
    <div class="fld"><label for="f_entered">Date entered</label><input type="date" id="f_entered" value="${esc(t.entered)}"></div>
+   <div class="fld"><label for="f_start">Time slot: from</label><input type="time" id="f_start" value="${esc(t.startTime||'')}"></div>
+   <div class="fld"><label for="f_end">Time slot: to</label><input type="time" id="f_end" value="${esc(t.endTime||'')}"><div class="err" id="e_time"></div></div>
    <div class="fld"><label for="f_assigned">Assigned to (Faculty)</label><input id="f_assigned" list="dl_as" maxlength="80" value="${esc(t.assigned)}" placeholder="Name of person responsible"><datalist id="dl_as">${uniq('assigned').map(a=>'<option value="'+esc(a)+'">').join('')}</datalist></div>
    <div class="fld"><label for="f_status">Status</label><select id="f_status">${STAT.map(s=>'<option'+(s===t.status?' selected':'')+'>'+s+'</option>').join('')}</select></div>
    <div class="fld"><label for="f_priority">Priority</label><select id="f_priority">${['Normal','High'].map(s=>'<option'+(s===t.priority?' selected':'')+'>'+s+'</option>').join('')}</select></div>
    <div class="fld"><label for="f_remark">Remark</label><input id="f_remark" maxlength="200" value="${esc(t.remark)}"></div>
-   <div class="fld full"><label for="f_alarm">Alarm (optional)</label><div class="alrow"><input type="datetime-local" id="f_alarm" value="${esc(t.alarmAt||'')}"><select id="f_repeat" aria-label="Repeat">${Object.keys(REPEAT).map(k=>'<option value="'+k+'"'+((t.repeat||'none')===k?' selected':'')+'>'+REPEAT[k]+'</option>').join('')}</select></div><div class="presets" style="margin:8px 0 0"><button type="button" class="chip" data-act="aq" data-k="due9">Due date, 9:00 AM</button><button type="button" class="chip" data-act="aq" data-k="before9">Day before, 9:00 AM</button><button type="button" class="chip" data-act="aq" data-k="clear">No alarm</button></div><div class="err" id="e_alarm"></div></div>
+   <div class="fld full"><label for="f_alarm">Alarm (optional)</label><div class="alrow"><input type="datetime-local" id="f_alarm" value="${esc(t.alarmAt||'')}"><select id="f_repeat" aria-label="Repeat">${Object.keys(REPEAT).map(k=>'<option value="'+k+'"'+((t.repeat||'none')===k?' selected':'')+'>'+REPEAT[k]+'</option>').join('')}</select></div><div class="presets" style="margin:8px 0 0"><button type="button" class="chip" data-act="aq" data-k="start">At start time</button><button type="button" class="chip" data-act="aq" data-k="due9">Due date, 9:00 AM</button><button type="button" class="chip" data-act="aq" data-k="before9">Day before, 9:00 AM</button><button type="button" class="chip" data-act="aq" data-k="clear">No alarm</button></div><div class="err" id="e_alarm"></div></div>
    <div class="foot"><button type="button" class="btn" data-act="close">Cancel</button><button class="btn pri" type="submit">${isNew?'Add task':'Save changes'}</button></div>
   </form>`,m=>{
     m.querySelector('#tf').addEventListener('submit',e=>{
@@ -270,11 +272,14 @@ function taskForm(t,presetDue){
       let ok=true; m.querySelector('#e_task').textContent='';m.querySelector('#e_due').textContent='';
       if(v('f_task').length<3){m.querySelector('#e_task').textContent='Enter the task name (at least 3 characters).';ok=false}
       if(!/^\d{4}-\d{2}-\d{2}$/.test(v('f_due'))){m.querySelector('#e_due').textContent='Choose a due date.';ok=false}
+      const st=v('f_start'),en=v('f_end');m.querySelector('#e_time').textContent='';
+      if(en&&!st){m.querySelector('#e_time').textContent='Add a start time too.';ok=false}
+      else if(st&&en&&en<=st){m.querySelector('#e_time').textContent='End time must be after the start.';ok=false}
       const al=v('f_alarm'),prevAlarm=isNew?'':(t.alarmAt||'');m.querySelector('#e_alarm').textContent='';
       if(al&&al!==prevAlarm&&new Date(al)<=new Date()){m.querySelector('#e_alarm').textContent='Choose a time in the future.';ok=false}
       if(!al&&v('f_repeat')!=='none'){m.querySelector('#e_alarm').textContent='Pick the alarm time to repeat.';ok=false}
       if(!ok)return;
-      const d={task:v('f_task'),details:v('f_details'),due:v('f_due'),entered:v('f_entered')||today(),assigned:v('f_assigned'),status:v('f_status'),priority:v('f_priority'),remark:v('f_remark'),alarmAt:al,repeat:al?v('f_repeat'):'none',alarmFired:(al&&al!==prevAlarm)?false:!!t.alarmFired,updated:new Date().toISOString()};
+      const d={task:v('f_task'),details:v('f_details'),due:v('f_due'),startTime:st,endTime:en,entered:v('f_entered')||today(),assigned:v('f_assigned'),status:v('f_status'),priority:v('f_priority'),remark:v('f_remark'),alarmAt:al,repeat:al?v('f_repeat'):'none',alarmFired:(al&&al!==prevAlarm)?false:!!t.alarmFired,updated:new Date().toISOString()};
       if(isNew){const n=Object.assign({id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),no:nextNo()},d);tasks.push(n);persist(n);toast('Task added')}
       else{Object.assign(t,d);persist(t);toast('Task updated')}
       closeModal();refreshAll();
@@ -298,7 +303,7 @@ function buildView(){({dashboard:dashBuild,sheet:sheetBuild,calendar:calBuild,hi
 function pillSt(t){return '<span class="pill '+sCls(t.status)+'">'+esc(t.status)+'</span>'}
 function stSelect(t){return '<select class="stsel '+sCls(t.status)+'" data-act="status" data-id="'+esc(t.id)+'" aria-label="Status of '+esc(t.task)+'">'+STAT.map(s=>'<option'+(s===t.status?' selected':'')+'>'+s+'</option>').join('')+'</select>'}
 function emptyBox(b,s){return '<div class="empty"><b>'+b+'</b>'+s+'</div>'}
-function itemRow(t){return '<button class="item" type="button" data-act="edit" data-id="'+esc(t.id)+'"><span style="min-width:0"><span class="t">'+esc(t.task)+'</span><br><span class="m">'+esc(t.assigned||'Unassigned')+' · <span class="mono">'+fmt(t.due)+'</span></span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+relPill(t)+pillSt(t)+'</span></button>'}
+function itemRow(t){return '<button class="item" type="button" data-act="edit" data-id="'+esc(t.id)+'"><span style="min-width:0"><span class="t">'+esc(t.task)+'</span><br><span class="m">'+esc(t.assigned||'Unassigned')+' · <span class="mono">'+fmt(t.due)+'</span>'+(slot(t)?' · '+esc(slot(t)):'')+'</span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+relPill(t)+pillSt(t)+'</span></button>'}
 
 /* dashboard */
 function dashBuild(){main.innerHTML=`
@@ -327,7 +332,10 @@ function dashRefresh(){
 }
 
 /* shared sorting + table */
-const SORTERS={no:t=>t.no,task:t=>t.task.toLowerCase(),due:t=>t.due,entered:t=>t.entered,assigned:t=>(t.assigned||'~').toLowerCase(),status:t=>STAT.indexOf(t.status)};
+function t12(h){if(!h)return '';const p=h.split(':').map(Number),d=new Date(2000,0,1,p[0],p[1]);return tm12(d)}
+function slot(t){return t.startTime?t12(t.startTime)+(t.endTime?' – '+t12(t.endTime):''):''}
+const slotLine=t=>slot(t)?'<div class="alm" style="color:var(--info)">'+esc(slot(t))+'</div>':'';
+const SORTERS={no:t=>t.no,task:t=>t.task.toLowerCase(),due:t=>t.due+(t.startTime||''),entered:t=>t.entered,assigned:t=>(t.assigned||'~').toLowerCase(),status:t=>STAT.indexOf(t.status)};
 function sortList(l,s){return l.slice().sort((a,b)=>{const x=SORTERS[s.k](a),y=SORTERS[s.k](b);return (x<y?-1:x>y?1:a.no-b.no)*s.dir})}
 function th(label,k,s,scope){const on=s.k===k;return '<th scope="col" aria-sort="'+(on?(s.dir>0?'ascending':'descending'):'none')+'"><button type="button" data-act="sort" data-s="'+scope+'" data-k="'+k+'">'+label+(on?(s.dir>0?' ▲':' ▼'):'')+'</button></th>'}
 function matchQ(t,q){if(!q)return true;q=q.toLowerCase();return [t.task,t.details,t.assigned,t.remark].some(x=>(x||'').toLowerCase().includes(q))}
@@ -367,7 +375,7 @@ function sheetRefresh(keep){const f=ui.ws;
   if(!keep)$('#w_as').innerHTML=assignedOpts(f.assigned);
   $('#w_h').innerHTML='<tr>'+th('S.No','no',f,'ws')+th('Activity','task',f,'ws')+th('Due date','due',f,'ws')+th('Assigned','assigned',f,'ws')+th('Status','status',f,'ws')+'<th scope="col">Remark</th><th scope="col"><span style="position:absolute;left:-9999px">Actions</span></th></tr>';
   const l=sheetFiltered();
-  $('#w_b').innerHTML=l.length?l.map(t=>`<tr class="${cls(t)==='done'?'done':''}"><td class="num">${t.no}</td><td class="tk"><b>${esc(t.task)}</b>${t.priority==='High'?' <span class="pill p-Overdue" style="margin-left:4px">High</span>':''}${t.details?'<small>'+esc(t.details)+'</small>':''}</td><td><span class="mono">${fmt(t.due)}</span><div style="margin-top:4px">${relPill(t)}</div>${alarmLine(t)}</td><td>${t.assigned?esc(t.assigned):'<span class="m" style="color:var(--muted)">Unassigned</span>'}</td><td>${stSelect(t)}</td><td>${esc(t.remark)}</td><td><div class="rowacts"><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" type="button" data-act="del" data-id="${esc(t.id)}">Delete</button></div></td></tr>`).join(''):'<tr><td colspan="7">'+emptyBox(tasks.length?'No tasks match':'No tasks yet',tasks.length?'Clear the search or change a filter.':'Choose “Add task” to enter the first one.')+'</td></tr>';
+  $('#w_b').innerHTML=l.length?l.map(t=>`<tr class="${cls(t)==='done'?'done':''}"><td class="num">${t.no}</td><td class="tk"><b>${esc(t.task)}</b>${t.priority==='High'?' <span class="pill p-Overdue" style="margin-left:4px">High</span>':''}${t.details?'<small>'+esc(t.details)+'</small>':''}</td><td><span class="mono">${fmt(t.due)}</span>${slotLine(t)}<div style="margin-top:4px">${relPill(t)}</div>${alarmLine(t)}</td><td>${t.assigned?esc(t.assigned):'<span class="m" style="color:var(--muted)">Unassigned</span>'}</td><td>${stSelect(t)}</td><td>${esc(t.remark)}</td><td><div class="rowacts"><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" type="button" data-act="del" data-id="${esc(t.id)}">Delete</button></div></td></tr>`).join(''):'<tr><td colspan="7">'+emptyBox(tasks.length?'No tasks match':'No tasks yet',tasks.length?'Clear the search or change a filter.':'Choose “Add task” to enter the first one.')+'</td></tr>';
   $('#w_c').textContent=l.length+' of '+tasks.length+' records shown';
 }
 
@@ -412,7 +420,7 @@ function histRefresh(keep){const f=ui.hist;if(!$('#h_b'))return;
   if(!keep)$('#h_as').innerHTML=assignedOpts(f.assigned);
   $('#h_h').innerHTML='<tr>'+th('S.No','no',f,'hist')+th('Entered','entered',f,'hist')+th('Activity','task',f,'hist')+th('Due date','due',f,'hist')+th('Assigned','assigned',f,'hist')+th('Status','status',f,'hist')+'<th scope="col">Remark</th><th scope="col"><span style="position:absolute;left:-9999px">Actions</span></th></tr>';
   const l=histFiltered();
-  $('#h_b').innerHTML=l.length?l.map(t=>`<tr class="${cls(t)==='done'?'done':''}"><td class="num">${t.no}</td><td class="mono">${fmt(t.entered)}</td><td class="tk"><b>${esc(t.task)}</b>${t.details?'<small>'+esc(t.details)+'</small>':''}</td><td><span class="mono">${fmt(t.due)}</span></td><td>${t.assigned?esc(t.assigned):'<span style="color:var(--muted)">Unassigned</span>'}</td><td>${pillSt(t)}</td><td>${esc(t.remark)}</td><td><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button></td></tr>`).join(''):'<tr><td colspan="8">'+emptyBox('No records found','Try widening the dates or clearing a filter.')+'</td></tr>';
+  $('#h_b').innerHTML=l.length?l.map(t=>`<tr class="${cls(t)==='done'?'done':''}"><td class="num">${t.no}</td><td class="mono">${fmt(t.entered)}</td><td class="tk"><b>${esc(t.task)}</b>${t.details?'<small>'+esc(t.details)+'</small>':''}</td><td><span class="mono">${fmt(t.due)}</span>${slotLine(t)}</td><td>${t.assigned?esc(t.assigned):'<span style="color:var(--muted)">Unassigned</span>'}</td><td>${pillSt(t)}</td><td>${esc(t.remark)}</td><td><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button></td></tr>`).join(''):'<tr><td colspan="8">'+emptyBox('No records found','Try widening the dates or clearing a filter.')+'</td></tr>';
   $('#h_c').textContent=l.length+' of '+tasks.length+' records match';
 }
 
@@ -436,9 +444,9 @@ function calRefresh(){const c=ui.cal;if(!$('#cdays'))return;const T=today();
   for(let d=1;d<=n;d++){const k=c.y+'-'+pad(c.m+1)+'-'+pad(d),l=by[k]||[];
     h+=`<button type="button" class="day${k<T?' past':''}${k===T?' today':''}${k===c.sel?' sel':''}" data-act="cday" data-date="${k}" aria-label="${d} ${MONTHS[c.m]}, ${l.length} tasks"><span class="d">${d}</span>${l.length?'<span class="first">'+esc(l[0].task)+'</span>':''}<span class="dots">${l.slice(0,4).map(t=>'<i class="dot" style="--c:'+COLOR[cls(t)]+'"></i>').join('')}${l.length>4?'<small>+'+(l.length-4)+'</small>':''}</span></button>`}
   $('#cdays').innerHTML=h;
-  const sl=(by[c.sel]||[]).slice().sort((a,b)=>a.no-b.no),dt=new Date(c.sel+'T00:00:00');
+  const sl=(by[c.sel]||[]).slice().sort((a,b)=>(a.startTime||'99').localeCompare(b.startTime||'99')||a.no-b.no),dt=new Date(c.sel+'T00:00:00');
   const rel2=c.sel===T?'Today':c.sel<T?'Past date':dayDiff(c.sel,T)+' days ahead';
-  $('#cpanel').innerHTML=`<h3>${dt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</h3><p class="sub">${rel2} · ${sl.length} ${sl.length===1?'task':'tasks'}</p><div class="list">${sl.length?sl.map(t=>`<div class="item" style="align-items:flex-start;flex-direction:column"><div style="display:flex;justify-content:space-between;gap:10px;width:100%"><span class="t">${esc(t.task)}</span>${relPill(t)}</div><span class="m">${esc(t.assigned||'Unassigned')}${t.remark?' · '+esc(t.remark):''}${hasAlarm(t)?' · Alarm '+esc(fmtAlarm(t.alarmAt)):''}</span><div class="rowacts">${stSelect(t)}<button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button></div></div>`).join(''):emptyBox('No tasks on this date','Add one and it appears here and on the working sheet.')}</div><div style="margin-top:14px"><button class="btn pri" type="button" data-act="addon" data-date="${c.sel}">+ Add task on ${fmt(c.sel)}</button></div>`;
+  $('#cpanel').innerHTML=`<h3>${dt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</h3><p class="sub">${rel2} · ${sl.length} ${sl.length===1?'task':'tasks'}</p><div class="list">${sl.length?sl.map(t=>`<div class="item" style="align-items:flex-start;flex-direction:column"><div style="display:flex;justify-content:space-between;gap:10px;width:100%"><span class="t">${esc(t.task)}</span>${relPill(t)}</div><span class="m">${slot(t)?'<b style="color:var(--info);font-weight:500">'+esc(slot(t))+'</b> · ':''}${esc(t.assigned||'Unassigned')}${t.remark?' · '+esc(t.remark):''}${hasAlarm(t)?' · Alarm '+esc(fmtAlarm(t.alarmAt)):''}</span><div class="rowacts">${stSelect(t)}<button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button></div></div>`).join(''):emptyBox('No tasks on this date','Add one and it appears here and on the working sheet.')}</div><div style="margin-top:14px"><button class="btn pri" type="button" data-act="addon" data-date="${c.sel}">+ Add task on ${fmt(c.sel)}</button></div>`;
 }
 
 /* ---------- Excel ---------- */
@@ -460,7 +468,7 @@ async function exportXlsx(list,label){
   try{
     const T=today(),wb=new ExcelJS.Workbook();wb.creator='Sandeep Rathour Task Tracker';wb.created=new Date();
     const ws=wb.addWorksheet('Tracking Sheet',{views:[{state:'frozen',ySplit:4}],pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
-    const cols=[['S.No',7],['Date Entered',14],['Task / Activity',38],['Details',36],['Due Date',13],['Assigned / Faculty',22],['Status',13],['Priority',10],['Remark',28],['Alarm',24],['Timing',16],['Last Updated',18]];
+    const cols=[['S.No',7],['Date Entered',14],['Task / Activity',38],['Details',36],['Due Date',13],['Time Slot',22],['Assigned / Faculty',22],['Status',13],['Priority',10],['Remark',28],['Alarm',24],['Timing',16],['Last Updated',18]];
     ws.columns=cols.map(c=>({width:c[1]}));
     ws.mergeCells(1,1,1,cols.length);const a1=ws.getCell('A1');a1.value='Task Tracking Sheet · Prof. Sandeep Rathour, Head';a1.font={name:'Calibri',size:16,bold:true,color:{argb:'FF1B2A49'}};a1.alignment={vertical:'middle'};ws.getRow(1).height=30;
     ws.mergeCells(2,1,2,cols.length);const a2=ws.getCell('A2');a2.value=label+' · '+list.length+' records · Generated '+fmt(T);a2.font={name:'Calibri',size:10,italic:true,color:{argb:'FF5B6B88'}};
@@ -469,11 +477,11 @@ async function exportXlsx(list,label){
     const fillFor={'Completed':'FFDDF3E8','In Process':'FFDDE9FB','Pending':'FFFBEBCF'};
     const ud=s=>{const p=s.split('-').map(Number);return new Date(Date.UTC(p[0],p[1]-1,p[2]))};
     list.forEach((t,i)=>{const r=ws.getRow(5+i);
-      const vals=[t.no,ud(t.entered),t.task,t.details||'',ud(t.due),t.assigned||'Unassigned',t.status,t.priority,t.remark||'',(t.alarmAt?fmtAlarm(t.alarmAt)+(t.repeat&&t.repeat!=='none'?' ('+REPEAT[t.repeat]+')':'')+(t.alarmFired?' · rang':''):''),rel(t),new Date(t.updated)];
+      const vals=[t.no,ud(t.entered),t.task,t.details||'',ud(t.due),slot(t)||'',t.assigned||'Unassigned',t.status,t.priority,t.remark||'',(t.alarmAt?fmtAlarm(t.alarmAt)+(t.repeat&&t.repeat!=='none'?' ('+REPEAT[t.repeat]+')':'')+(t.alarmFired?' · rang':''):''),rel(t),new Date(t.updated)];
       vals.forEach((v,j)=>{const c=r.getCell(j+1);c.value=v;c.border=bd;c.font={name:'Calibri',size:11};c.alignment={vertical:'top',wrapText:true,horizontal:j===0?'center':'left'};
-        if(j===1||j===4){c.numFmt='dd/mm/yyyy'}if(j===11){c.numFmt='dd/mm/yyyy hh:mm'}});
-      const sc=r.getCell(7);sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:fillFor[t.status]}};sc.font={name:'Calibri',size:11,bold:true};
-      if(cls(t)==='overdue'){r.getCell(11).font={name:'Calibri',size:11,bold:true,color:{argb:'FFC0392B'}};r.getCell(5).font={name:'Calibri',size:11,bold:true,color:{argb:'FFC0392B'}}}
+        if(j===1||j===4){c.numFmt='dd/mm/yyyy'}if(j===12){c.numFmt='dd/mm/yyyy hh:mm'}});
+      const sc=r.getCell(8);sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:fillFor[t.status]}};sc.font={name:'Calibri',size:11,bold:true};
+      if(cls(t)==='overdue'){r.getCell(12).font={name:'Calibri',size:11,bold:true,color:{argb:'FFC0392B'}};r.getCell(5).font={name:'Calibri',size:11,bold:true,color:{argb:'FFC0392B'}}}
     });
     ws.autoFilter={from:{row:4,column:1},to:{row:4+list.length,column:cols.length}};
     const sm=wb.addWorksheet('Summary');sm.columns=[{width:26},{width:12}];
@@ -505,7 +513,7 @@ document.addEventListener('click',e=>{
   else if(a==='ctoday'){const d=new Date();ui.cal.y=d.getFullYear();ui.cal.m=d.getMonth();ui.cal.sel=today();calRefresh()}
   else if(a==='cday'){ui.cal.sel=b.dataset.date;calRefresh()}
   else if(a==='addon')taskForm(null,b.dataset.date);
-  else if(a==='aq'){const al=$('#f_alarm'),due=$('#f_due').value,k=b.dataset.k;if(k==='clear'){al.value='';$('#f_repeat').value='none';return}if(!due){toast('Choose the due date first');return}let d=due;if(k==='before9'){const x=new Date(due+'T00:00:00');x.setDate(x.getDate()-1);d=iso(x)}al.value=d+'T09:00'}
+  else if(a==='aq'){const al=$('#f_alarm'),due=$('#f_due').value,k=b.dataset.k;if(k==='clear'){al.value='';$('#f_repeat').value='none';return}if(!due){toast('Choose the due date first');return}let d=due;if(k==='start'){const stt=$('#f_start').value;if(!stt){toast('Set the time slot start first');return}al.value=due+'T'+stt;return}if(k==='before9'){const x=new Date(due+'T00:00:00');x.setDate(x.getDate()-1);d=iso(x)}al.value=d+'T09:00'}
   else if(a==='rsnooze')ringSnooze(id,+b.dataset.m);
   else if(a==='rdone')ringDone(id);
   else if(a==='rdismiss')ringDismiss(id);
