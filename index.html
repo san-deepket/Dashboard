@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap">
 <style>body{margin:0}</style>
 <style>
+/* Layout: sticky masthead with tabs over a single working column; translucent panels float above a slow 3D scene. Single dark look by design. */
 :root{
   color-scheme:dark;
   --bg:#0a111e; --panel:rgba(13,21,36,.86); --panel-solid:#0f1828; --raised:#16223a;
@@ -190,7 +191,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 <script>
 (function(){
 'use strict';
-
+/* ---------- helpers ---------- */
 const $=(s,r)=>(r||document).querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -203,19 +204,16 @@ const sCls=s=>'p-'+s.split(' ')[0];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const LS='rathour-task-tracker-v1';
 
-
+/* ---------- state + storage ---------- */
 let tasks=[]; let db=null; let dbReady=false;
 const ui={view:'dashboard',
   ws:{q:'',show:'active',status:'',assigned:'',k:'due',dir:1},
   hist:{preset:'',q:'',status:'',assigned:'',eFrom:'',eTo:'',dFrom:'',dTo:'',scope:'all',k:'due',dir:-1},
   cal:{y:new Date().getFullYear(),m:new Date().getMonth(),sel:today()}};
 
-const SEED=[
- {no:1,task:'Cloud Track Launching Program',due:'2026-10-12',status:'In Process',assigned:'',remark:''},
- {no:2,task:'CSR Track Lab Opening',due:'2026-10-22',status:'Pending',assigned:'',remark:''},
- {no:3,task:'Registrar Office Regards',due:'2026-10-05',status:'Pending',assigned:'',remark:''}
-].map(t=>Object.assign({id:'seed'+t.no,details:'',priority:'Normal',entered:'2026-10-05',updated:'2026-10-05T09:00:00.000Z'},t));
-
+const SEED=[];
+const OLD_SEED_STAMP='2026-10-05T09:00:00.000Z';
+function purgeSeeds(){const gone=tasks.filter(t=>/^seed\d$/.test(t.id)&&t.updated===OLD_SEED_STAMP);if(!gone.length)return;tasks=tasks.filter(t=>!gone.includes(t));lsWrite();gone.forEach(t=>dbDel(t.id))}
 function lsRead(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
 function lsWrite(){try{localStorage.setItem(LS,JSON.stringify(tasks))}catch(e){}}
 function dbSet(t){if(db)db.collection('tasks').doc(t.id).set(t).catch(()=>toast('Saved on this device. Cloud sync failed.'))}
@@ -228,14 +226,14 @@ async function initDb(){
     db=api;
     const meta=await db.doc('meta/state').get();
     const snap=await db.collection('tasks').get();
-    if(snap.size>0){tasks=snap.docs.map(d=>d.data());lsWrite()}
+    if(snap.size>0){tasks=snap.docs.map(d=>d.data());purgeSeeds();lsWrite()}
     else if(!meta.exists){await Promise.all(tasks.map(t=>db.collection('tasks').doc(t.id).set(t)));await db.doc('meta/state').set({seeded:true})}
     else{tasks=[];lsWrite()}
     dbReady=true;refreshAll();
   }catch(e){db=null}
 }
 
-
+/* ---------- task logic ---------- */
 function cls(t){if(t.status==='Completed')return 'done';const d=dayDiff(t.due,today());return d<0?'overdue':d===0?'today':'upcoming'}
 function rel(t){const d=dayDiff(t.due,today());if(t.status==='Completed')return 'Completed';if(d<0)return Math.abs(d)+(Math.abs(d)===1?' day':' days')+' overdue';if(d===0)return 'Due today';return d===1?'Due tomorrow':'In '+d+' days'}
 function relPill(t){const c=cls(t);return c==='overdue'?'<span class="pill p-Overdue">'+esc(rel(t))+'</span>':c==='today'?'<span class="pill p-Today">Due today</span>':''}
@@ -244,7 +242,7 @@ const nextNo=()=>tasks.reduce((m,t)=>Math.max(m,t.no||0),0)+1;
 const uniq=k=>[...new Set(tasks.map(t=>(t[k]||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
 function setStatus(id,s){const t=tasks.find(x=>x.id===id);if(!t||t.status===s)return;t.status=s;t.updated=new Date().toISOString();persist(t);refreshAll();toast('Status updated to '+s)}
 
-
+/* ---------- toast + modal ---------- */
 let toastT;
 function toast(m){let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';e.setAttribute('role','status');document.body.appendChild(e)}e.textContent=m;e.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{e.hidden=true},2600)}
 function openModal(html,mount){const l=$('#layer');l.innerHTML='<div class="ov" id="ov"><div class="modal" role="dialog" aria-modal="true">'+html+'</div></div>';$('#ov').addEventListener('mousedown',e=>{if(e.target.id==='ov')closeModal()});mount&&mount($('.modal',l));const f=$('input,select,textarea,button',l);f&&f.focus()}
@@ -286,7 +284,7 @@ function taskForm(t,presetDue){
 function confirmDelete(id){const t=tasks.find(x=>x.id===id);if(!t)return;
   openModal(`<h3>Delete this task?</h3><p class="sub">“${esc(t.task)}” will be removed from the working sheet, calendar, history and Excel export. This cannot be undone.</p><div class="foot" style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" data-act="close">Keep task</button><button class="btn danger" data-act="del-yes" data-id="${esc(id)}">Delete task</button></div>`)}
 
-
+/* ---------- rendering ---------- */
 const main=$('#main');
 const TABS=[['dashboard','Dashboard'],['sheet','Working Sheet'],['calendar','Calendar'],['history','Old Data'],['alarms','Alarms']];
 function renderTabs(){
@@ -302,7 +300,7 @@ function stSelect(t){return '<select class="stsel '+sCls(t.status)+'" data-act="
 function emptyBox(b,s){return '<div class="empty"><b>'+b+'</b>'+s+'</div>'}
 function itemRow(t){return '<button class="item" type="button" data-act="edit" data-id="'+esc(t.id)+'"><span style="min-width:0"><span class="t">'+esc(t.task)+'</span><br><span class="m">'+esc(t.assigned||'Unassigned')+' · <span class="mono">'+fmt(t.due)+'</span></span></span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+relPill(t)+pillSt(t)+'</span></button>'}
 
-
+/* dashboard */
 function dashBuild(){main.innerHTML=`
  <div class="head"><div><h2>Dashboard</h2><p class="sub" id="dsub"></p></div></div>
  <div class="tiles" id="tiles"></div>
@@ -335,7 +333,7 @@ function th(label,k,s,scope){const on=s.k===k;return '<th scope="col" aria-sort=
 function matchQ(t,q){if(!q)return true;q=q.toLowerCase();return [t.task,t.details,t.assigned,t.remark].some(x=>(x||'').toLowerCase().includes(q))}
 function assignedOpts(sel){return '<option value="">All</option>'+uniq('assigned').map(a=>'<option'+(a===sel?' selected':'')+'>'+esc(a)+'</option>').join('')}
 
-
+/* working sheet */
 function sheetFiltered(){const f=ui.ws,T=today();
   return sortList(tasks.filter(t=>{
     const c=cls(t);
@@ -373,7 +371,7 @@ function sheetRefresh(keep){const f=ui.ws;
   $('#w_c').textContent=l.length+' of '+tasks.length+' records shown';
 }
 
-
+/* history */
 function histFiltered(){const f=ui.hist,T=today();
   return sortList(tasks.filter(t=>{
     if(f.scope==='done'&&t.status!=='Completed')return false;
@@ -418,7 +416,7 @@ function histRefresh(keep){const f=ui.hist;if(!$('#h_b'))return;
   $('#h_c').textContent=l.length+' of '+tasks.length+' records match';
 }
 
-
+/* calendar */
 function calBuild(){main.innerHTML=`
  <div class="head"><div><h2>Calendar</h2><p class="sub">Each task sits on its due date. Select a day to see and update its tasks.</p></div></div>
  <div class="cal">
@@ -443,7 +441,7 @@ function calRefresh(){const c=ui.cal;if(!$('#cdays'))return;const T=today();
   $('#cpanel').innerHTML=`<h3>${dt.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}</h3><p class="sub">${rel2} · ${sl.length} ${sl.length===1?'task':'tasks'}</p><div class="list">${sl.length?sl.map(t=>`<div class="item" style="align-items:flex-start;flex-direction:column"><div style="display:flex;justify-content:space-between;gap:10px;width:100%"><span class="t">${esc(t.task)}</span>${relPill(t)}</div><span class="m">${esc(t.assigned||'Unassigned')}${t.remark?' · '+esc(t.remark):''}${hasAlarm(t)?' · Alarm '+esc(fmtAlarm(t.alarmAt)):''}</span><div class="rowacts">${stSelect(t)}<button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button></div></div>`).join(''):emptyBox('No tasks on this date','Add one and it appears here and on the working sheet.')}</div><div style="margin-top:14px"><button class="btn pri" type="button" data-act="addon" data-date="${c.sel}">+ Add task on ${fmt(c.sel)}</button></div>`;
 }
 
-
+/* ---------- Excel ---------- */
 function openExport(){
   const filt=ui.view==='sheet'?sheetFiltered():ui.view==='history'?histFiltered():null;
   const label=ui.view==='sheet'?'the current Working Sheet view':'the current Old Data filters';
@@ -522,7 +520,7 @@ $('#btnAdd').onclick=()=>taskForm(null,ui.view==='calendar'?ui.cal.sel:'');
 $('#btnXls').onclick=openExport;
 
 
-
+/* ---------- alarms + clock ---------- */
 const AKEY='rathour-alarm-sound',REPEAT={none:'Once',daily:'Every day',weekdays:'Weekdays only',weekly:'Every week'};
 let sndOn=true;try{sndOn=localStorage.getItem(AKEY)!=='off'}catch(e){}
 let ac=null,ringing=[],ringT=null,ringStart=0,lastDay=today();const baseTitle=document.title;
@@ -585,13 +583,13 @@ function alarmRefresh(){if(!$('#alist'))return;
   $('#alist').innerHTML=l.length?l.map(t=>`<div class="item"><span style="min-width:0"><span class="t">${esc(t.task)}</span><br><span class="m"><span class="mono">${esc(fmtAlarm(t.alarmAt))}</span> · ${REPEAT[t.repeat||'none']} · in ${until(new Date(t.alarmAt)-Date.now())}</span></span><span class="rowacts"><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" type="button" data-act="alarmoff" data-id="${esc(t.id)}">Turn off</button></span></div>`).join(''):emptyBox('No alarms set','Pick a task and a time above. It will ring here at that moment.');
   tick()}
 
-
-(function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite()})();
+/* ---------- boot ---------- */
+(function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite();purgeSeeds()})();
 buildView();
 initDb();
 setInterval(tick,1000);tick();
 
-
+/* ---------- 3D background ---------- */
 (function(){
   if(!window.THREE)return;
   try{
