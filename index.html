@@ -215,6 +215,7 @@ const ui={view:'dashboard',
 const SEED=[];
 const OLD_SEED_STAMP='2026-10-05T09:00:00.000Z';
 function purgeSeeds(){const gone=tasks.filter(t=>/^seed\d$/.test(t.id)&&t.updated===OLD_SEED_STAMP);if(!gone.length)return;tasks=tasks.filter(t=>!gone.includes(t));lsWrite();gone.forEach(t=>dbDel(t.id))}
+function renumber(){const l=tasks.slice().sort((a,b)=>(a.no||0)-(b.no||0));const ch=[];l.forEach((t,i)=>{if(t.no!==i+1){t.no=i+1;ch.push(t)}});if(ch.length){lsWrite();ch.forEach(dbSet)}}
 function lsRead(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
 function lsWrite(){try{localStorage.setItem(LS,JSON.stringify(tasks))}catch(e){}}
 function dbSet(t){if(db)db.collection('tasks').doc(t.id).set(t).catch(()=>toast('Saved on this device. Cloud sync failed.'))}
@@ -227,7 +228,7 @@ async function initDb(){
     db=api;
     const meta=await db.doc('meta/state').get();
     const snap=await db.collection('tasks').get();
-    if(snap.size>0){tasks=snap.docs.map(d=>d.data());purgeSeeds();lsWrite()}
+    if(snap.size>0){tasks=snap.docs.map(d=>d.data());purgeSeeds();renumber();lsWrite()}
     else if(!meta.exists){await Promise.all(tasks.map(t=>db.collection('tasks').doc(t.id).set(t)));await db.doc('meta/state').set({seeded:true})}
     else{tasks=[];lsWrite()}
     dbReady=true;refreshAll();
@@ -503,7 +504,7 @@ document.addEventListener('click',e=>{
   if(a==='view')go(b.dataset.v);
   else if(a==='edit')taskForm(tasks.find(t=>t.id===id));
   else if(a==='del')confirmDelete(id);
-  else if(a==='del-yes'){const i=tasks.findIndex(t=>t.id===id);if(i>-1){tasks.splice(i,1);lsWrite();dbDel(id);toast('Task deleted')}closeModal();refreshAll()}
+  else if(a==='del-yes'){const i=tasks.findIndex(t=>t.id===id);if(i>-1){tasks.splice(i,1);lsWrite();dbDel(id);renumber();toast('Task deleted')}closeModal();refreshAll()}
   else if(a==='close')closeModal();
   else if(a==='sort'){const s=ui[b.dataset.s==='ws'?'ws':'hist'],k=b.dataset.k;if(s.k===k)s.dir*=-1;else{s.k=k;s.dir=1}refreshAll()}
   else if(a==='tile'){const g=b.dataset.go;if(g==='done'){ui.hist.scope='done';ui.hist.status='';ui.hist.q='';go('history')}else{ui.ws.show=g;ui.ws.status='';ui.ws.q='';ui.ws.assigned='';go('sheet')}}
@@ -593,7 +594,7 @@ function alarmRefresh(){if(!$('#alist'))return;
   tick()}
 
 /* ---------- boot ---------- */
-(function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite();purgeSeeds()})();
+(function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite();purgeSeeds();renumber()})();
 buildView();
 initDb();
 setInterval(tick,1000);tick();
