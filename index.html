@@ -81,7 +81,7 @@ h3{font-size:18px}
 .legend b{color:var(--fg);font-weight:600}
 .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .fld{display:flex;flex-direction:column;gap:4px;min-width:0}
-.fld label{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lbl,.fld label{font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 input,select,textarea{background:var(--panel-solid);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0;width:100%}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
 input[type=date]{font-family:var(--f-mono);font-size:13px}
@@ -149,6 +149,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 .clock b{font:500 17px var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.02em}
 .clock span{font-size:11px;color:var(--muted)}
 .alrow{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px}
+.alrow.slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end}
 .alm{margin-top:4px;font:500 11px var(--f-mono);color:var(--teal)}
 .bigclk{font:500 54px/1.05 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .nextal{margin-top:14px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel-solid);color:var(--muted)}
@@ -161,7 +162,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 .ring-card .rowacts{flex-wrap:wrap;margin-top:12px}
 .note{font-size:12px;color:var(--muted);margin-top:14px}
 @media (max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2,.cal{grid-template-columns:minmax(0,1fr)}.tiles .tile:last-child{grid-column:1/-1}}
-@media (max-width:640px){.bigclk{font-size:38px}.alrow{grid-template-columns:minmax(0,1fr)}.clock{align-items:flex-start;order:3}.first{display:none}.day{min-height:48px;aspect-ratio:1/1}.modal form{grid-template-columns:minmax(0,1fr)}.tile .v{font-size:30px}.brand b{font-size:19px}h2{font-size:22px}}
+@media (max-width:640px){.alrow.slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.alrow.slot .chip{grid-column:1/-1;justify-self:start}.bigclk{font-size:38px}.alrow{grid-template-columns:minmax(0,1fr)}.clock{align-items:flex-start;order:3}.first{display:none}.day{min-height:48px;aspect-ratio:1/1}.modal form{grid-template-columns:minmax(0,1fr)}.tile .v{font-size:30px}.brand b{font-size:19px}h2{font-size:22px}}
 @media (min-width:641px){.dots small.m{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -257,8 +258,7 @@ function taskForm(t,presetDue){
    <div class="fld full"><label for="f_details">Details (optional)</label><textarea id="f_details" rows="2" maxlength="600">${esc(t.details)}</textarea></div>
    <div class="fld"><label for="f_due">Due date</label><input type="date" id="f_due" value="${esc(t.due)}"><div class="err" id="e_due"></div></div>
    <div class="fld"><label for="f_entered">Date entered</label><input type="date" id="f_entered" value="${esc(t.entered)}"></div>
-   <div class="fld"><label for="f_start">Time slot: from</label><input type="time" id="f_start" value="${esc(t.startTime||'')}"></div>
-   <div class="fld"><label for="f_end">Time slot: to</label><input type="time" id="f_end" value="${esc(t.endTime||'')}"><div class="err" id="e_time"></div></div>
+   <div class="fld full"><span class="lbl">Time slot (optional)</span><div class="alrow slot"><div class="fld"><label for="f_start">From</label><input type="time" id="f_start" value="${esc(t.startTime||'')}"></div><div class="fld"><label for="f_end">To (optional)</label><input type="time" id="f_end" value="${esc(t.endTime||'')}"></div><button type="button" class="chip" data-act="slotclear">Clear</button></div><div class="note" style="margin:0">Leave both empty if the task has no fixed time.</div><div class="err" id="e_time"></div></div>
    <div class="fld"><label for="f_assigned">Assigned to (Faculty)</label><input id="f_assigned" list="dl_as" maxlength="80" value="${esc(t.assigned)}" placeholder="Name of person responsible"><datalist id="dl_as">${uniq('assigned').map(a=>'<option value="'+esc(a)+'">').join('')}</datalist></div>
    <div class="fld"><label for="f_status">Status</label><select id="f_status">${STAT.map(s=>'<option'+(s===t.status?' selected':'')+'>'+s+'</option>').join('')}</select></div>
    <div class="fld"><label for="f_priority">Priority</label><select id="f_priority">${['Normal','High'].map(s=>'<option'+(s===t.priority?' selected':'')+'>'+s+'</option>').join('')}</select></div>
@@ -514,6 +514,7 @@ document.addEventListener('click',e=>{
   else if(a==='cday'){ui.cal.sel=b.dataset.date;calRefresh()}
   else if(a==='addon')taskForm(null,b.dataset.date);
   else if(a==='aq'){const al=$('#f_alarm'),due=$('#f_due').value,k=b.dataset.k;if(k==='clear'){al.value='';$('#f_repeat').value='none';return}if(!due){toast('Choose the due date first');return}let d=due;if(k==='start'){const stt=$('#f_start').value;if(!stt){toast('Set the time slot start first');return}al.value=due+'T'+stt;return}if(k==='before9'){const x=new Date(due+'T00:00:00');x.setDate(x.getDate()-1);d=iso(x)}al.value=d+'T09:00'}
+  else if(a==='slotclear'){$('#f_start').value='';$('#f_end').value=''}
   else if(a==='rsnooze')ringSnooze(id,+b.dataset.m);
   else if(a==='rdone')ringDone(id);
   else if(a==='rdismiss')ringDismiss(id);
