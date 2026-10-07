@@ -165,6 +165,26 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 @media (max-width:640px){.alrow.slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.alrow.slot .chip{grid-column:1/-1;justify-self:start}.bigclk{font-size:38px}.alrow{grid-template-columns:minmax(0,1fr)}.clock{align-items:flex-start;order:3}.first{display:none}.day{min-height:48px;aspect-ratio:1/1}.modal form{grid-template-columns:minmax(0,1fr)}.tile .v{font-size:30px}.brand b{font-size:19px}h2{font-size:22px}}
 @media (min-width:641px){.dots small.m{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+.ai-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--accent);color:var(--accent-ink);border:0;border-radius:99px;padding:11px 18px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.ai-btn:hover{filter:brightness(1.08)}
+.ai-panel{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:45;width:min(400px,calc(100% - 32px));height:min(600px,calc(100% - 100px));display:flex;flex-direction:column;background:var(--panel-solid);border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 80px rgba(0,0,0,.55);overflow:hidden}
+.ai-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);background:var(--raised)}
+.ai-head b{font:600 17px var(--f-display)}
+.ai-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.ai-m{max-width:92%;padding:9px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px}
+.ai-m.u{align-self:flex-end;background:rgba(226,178,76,.16);border:1px solid rgba(226,178,76,.35)}
+.ai-m.a{align-self:flex-start;background:var(--raised);border:1px solid var(--line)}
+.ai-m.e{align-self:flex-start;color:var(--bad);border:1px solid rgba(240,112,112,.4);background:rgba(240,112,112,.08)}
+.ai-act{align-self:stretch;border:1px solid var(--teal);border-radius:10px;padding:10px 12px;background:rgba(70,189,179,.07);font-size:13px}
+.ai-act .rowacts{margin-top:8px}
+.ai-act.done{opacity:.7;border-color:var(--line)}
+.ai-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 10px}
+.ai-form{display:flex;gap:8px;padding:10px 14px 14px;border-top:1px solid var(--line)}
+.ai-form input{flex:1}
+
+.sync{font:500 11px var(--f-mono);color:var(--muted);align-self:center;padding:0 4px}
+.sync[data-s=Offline]{color:var(--bad)}
+.sync[data-s=Saved]{color:var(--good)}
 </style>
 </head>
 <body>
@@ -177,6 +197,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
     <div class="clock" aria-label="Current time"><b id="clk">--:--:-- --</b><span id="clkd"></span></div>
     <div class="acts">
+      <span class="sync" id="sync" hidden></span>
       <button class="btn" id="btnXls" type="button">Download Excel</button>
       <button class="btn pri" id="btnAdd" type="button">+ Add task</button>
     </div>
@@ -215,11 +236,11 @@ const ui={view:'dashboard',
 const SEED=[];
 const OLD_SEED_STAMP='2026-10-05T09:00:00.000Z';
 function purgeSeeds(){const gone=tasks.filter(t=>/^seed\d$/.test(t.id)&&t.updated===OLD_SEED_STAMP);if(!gone.length)return;tasks=tasks.filter(t=>!gone.includes(t));lsWrite();gone.forEach(t=>dbDel(t.id))}
-function renumber(){const l=tasks.slice().sort((a,b)=>(a.no||0)-(b.no||0));const ch=[];l.forEach((t,i)=>{if(t.no!==i+1){t.no=i+1;ch.push(t)}});if(ch.length){lsWrite();ch.forEach(dbSet)}}
+function renumber(){const l=tasks.slice().sort((a,b)=>(a.no||0)-(b.no||0)||String(a.entered).localeCompare(String(b.entered))||String(a.id).localeCompare(String(b.id)));const ch=[];l.forEach((t,i)=>{if(t.no!==i+1){t.no=i+1;ch.push(t)}});if(ch.length){lsWrite();ch.forEach(dbSet)}}
 function lsRead(){try{const r=localStorage.getItem(LS);return r?JSON.parse(r):null}catch(e){return null}}
 function lsWrite(){try{localStorage.setItem(LS,JSON.stringify(tasks))}catch(e){}}
-function dbSet(t){if(db)db.collection('tasks').doc(t.id).set(t).catch(()=>toast('Saved on this device. Cloud sync failed.'))}
-function dbDel(id){if(db)db.collection('tasks').doc(id).delete().catch(()=>{})}
+function dbSet(t){remoteUpsert(t)}
+function dbDel(id){remoteRemove(id)}
 function persist(t){lsWrite();if(t)dbSet(t)}
 
 async function initDb(){
@@ -593,10 +614,162 @@ function alarmRefresh(){if(!$('#alist'))return;
   $('#alist').innerHTML=l.length?l.map(t=>`<div class="item"><span style="min-width:0"><span class="t">${esc(t.task)}</span><br><span class="m"><span class="mono">${esc(fmtAlarm(t.alarmAt))}</span> · ${REPEAT[t.repeat||'none']} · in ${until(new Date(t.alarmAt)-Date.now())}</span></span><span class="rowacts"><button class="btn sm" type="button" data-act="edit" data-id="${esc(t.id)}">Edit</button><button class="btn sm danger" type="button" data-act="alarmoff" data-id="${esc(t.id)}">Turn off</button></span></div>`).join(''):emptyBox('No alarms set','Pick a task and a time above. It will ring here at that moment.');
   tick()}
 
+
+/* ---------- cloud sync (Vercel /api/tasks, Redis) ---------- */
+const CODE_KEY='rathor-ai-code';let accessCode='';try{accessCode=localStorage.getItem(CODE_KEY)||''}catch(e){}
+let remoteOn=false,flushT=null,syncing=false;const pend={up:new Map(),rm:new Set()};
+const hdr=()=>Object.assign({'Content-Type':'application/json'},accessCode?{'x-access-code':accessCode}:{});
+function setSync(txt){const e=$('#sync');if(!e)return;e.hidden=false;e.textContent=txt;e.dataset.s=txt}
+function remoteUpsert(t){if(!remoteOn)return;pend.up.set(t.id,t);pend.rm.delete(t.id);schedule()}
+function remoteRemove(id){if(!remoteOn)return;pend.rm.add(id);pend.up.delete(id);schedule()}
+function schedule(){setSync('Saving…');clearTimeout(flushT);flushT=setTimeout(flush,400)}
+function askAccess(retry){
+  const wrong=!!accessCode;
+  openModal(`<h3>Access code</h3><p class="sub">${wrong?'That code was not accepted. ':''}Enter the access code to open the tracker.</p><form id="cf" style="display:flex;gap:8px;margin-top:14px"><input type="password" id="cc" aria-label="Access code" autocomplete="current-password"><button class="btn pri" type="submit">Continue</button></form>`,m=>{
+    m.querySelector('#cf').onsubmit=e=>{e.preventDefault();accessCode=m.querySelector('#cc').value.trim();try{localStorage.setItem(CODE_KEY,accessCode)}catch(x){}closeModal();retry()}})}
+async function flush(){
+  if(syncing){flushT=setTimeout(flush,400);return}
+  if(!pend.up.size&&!pend.rm.size&&!pend.init)return;
+  syncing=true;
+  const snap=new Map([...pend.up].map(([id,t])=>[id,JSON.stringify(t)])),rm=[...pend.rm],init=!!pend.init;
+  try{
+    const r=await fetch('/api/tasks',{method:'POST',headers:hdr(),body:JSON.stringify({upsert:[...snap.values()].map(x=>JSON.parse(x)),remove:rm,init})});
+    if(r.status===401){syncing=false;askAccess(flush);return}
+    if(!r.ok)throw new Error('save');
+    snap.forEach((js,id)=>{const cur=pend.up.get(id);if(cur&&JSON.stringify(cur)===js)pend.up.delete(id)});
+    rm.forEach(id=>pend.rm.delete(id));if(init)pend.init=false;
+    setSync(pend.up.size||pend.rm.size?'Saving…':'Saved');
+    if(pend.up.size||pend.rm.size)flushT=setTimeout(flush,400);
+  }catch(e){setSync('Offline');flushT=setTimeout(flush,5000)}
+  syncing=false;
+}
+async function pull(){
+  const r=await fetch('/api/tasks',{headers:hdr(),cache:'no-store'});
+  if(r.status===404)return 'none';
+  if(r.status===401)return 'auth';
+  if(!r.ok){let m='';try{m=(await r.json()).error}catch(e){}throw new Error(m||'pull')}
+  return r.json();
+}
+function applyRemote(list){
+  const m=new Map(list.map(t=>[t.id,t]));let ch=false;
+  tasks=tasks.filter(t=>{if(m.has(t.id))return true;ch=true;return false});
+  tasks.forEach(t=>{const r=m.get(t.id);if(JSON.stringify(r)!==JSON.stringify(t)){Object.assign(t,r);ch=true}m.delete(t.id)});
+  m.forEach(r=>{tasks.push(r);ch=true});
+  return ch;
+}
+async function initRemote(){
+  let j;
+  try{j=await pull()}catch(e){setSync('Offline');setTimeout(initRemote,15000);return}
+  if(j==='none')return;
+  if(j==='auth'){askAccess(initRemote);return}
+  remoteOn=true;
+  if(j.tasks.length){applyRemote(j.tasks);purgeSeeds();renumber();lsWrite()}
+  else if(!j.initialized){tasks.forEach(t=>pend.up.set(t.id,t));pend.init=true;flush()}
+  else{tasks=[];lsWrite()}
+  if(!pend.up.size&&!pend.init)setSync('Saved');
+  refreshAll();
+  setInterval(poll,15000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
+}
+async function poll(){
+  if(!remoteOn||document.hidden||syncing||pend.up.size||pend.rm.size)return;
+  try{const j=await pull();if(j&&j.tasks&&!pend.up.size&&!pend.rm.size&&applyRemote(j.tasks)){lsWrite();refreshAll()}}catch(e){}
+}
+
+/* ---------- AI assistant (Gemini via /api/assistant) ---------- */
+(function(){
+  const CK='rathor-ai-code';let hist=[],busy=false;
+  const wrap=document.createElement('div');
+  wrap.innerHTML=`<button class="ai-btn" id="aiBtn" type="button">Ask assistant</button>
+  <section class="ai-panel" id="aiPanel" role="dialog" aria-label="Task assistant" hidden>
+   <div class="ai-head"><b>Task assistant</b><button class="btn sm" type="button" id="aiClose">Close</button></div>
+   <div class="ai-msgs" id="aiMsgs" aria-live="polite"></div>
+   <div class="ai-chips" id="aiChips"></div>
+   <form class="ai-form" id="aiForm"><input id="aiIn" maxlength="1000" autocomplete="off" placeholder="Ask about tasks or add one"><button class="btn pri" type="submit" id="aiSend">Send</button></form>
+  </section>`;
+  document.body.appendChild(wrap);
+  const $a=id=>document.getElementById(id);
+  const msgs=$a('aiMsgs');
+  function say(cls,text){const d=document.createElement('div');d.className='ai-m '+cls;d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d}
+  function open(){$a('aiPanel').hidden=false;$a('aiBtn').hidden=true;if(!msgs.children.length)say('a','Hello. I can answer questions about your tasks and add or update them when you ask. I always ask you to confirm before changing anything.');$a('aiIn').focus()}
+  function close(){$a('aiPanel').hidden=true;$a('aiBtn').hidden=false}
+  $a('aiBtn').onclick=open;$a('aiClose').onclick=close;
+  $a('aiChips').innerHTML=['What is due today?','What is overdue?','Plan my week'].map(q=>'<button type="button" class="chip" data-q="'+q+'">'+q+'</button>').join('')+'<button type="button" class="chip" data-q="" id="aiAddHint">Add a task…</button>';
+  $a('aiChips').onclick=e=>{const b=e.target.closest('.chip');if(!b)return;if(b.id==='aiAddHint'){$a('aiIn').value='Add a task: ';$a('aiIn').focus();return}ask(b.dataset.q)};
+  $a('aiForm').onsubmit=e=>{e.preventDefault();const v=$a('aiIn').value.trim();if(v){$a('aiIn').value='';ask(v)}};
+
+  const slotTxt=a=>(a.startTime?t12(a.startTime)+(a.endTime?' to '+t12(a.endTime):''):'');
+  function describe(a){
+    const t=a.id?tasks.find(x=>x.id===a.id):null;
+    if(a.type==='add_task')return 'Add task: '+(a.title||'?')+'\nDue '+fmt(a.due)+(slotTxt(a)?' · '+slotTxt(a):'')+(a.assigned?' · '+a.assigned:'')+(a.priority==='High'?' · High priority':'');
+    if(a.type==='set_status')return 'Set status of “'+(t?t.task:'unknown task')+'” to '+a.status;
+    const c=a.changes||{};return 'Update “'+(t?t.task:'unknown task')+'”: '+Object.keys(c).filter(k=>c[k]!==''&&c[k]!=null).map(k=>k+' → '+(k==='due'?fmt(c[k]):c[k])).join(', ');
+  }
+  const HM=/^([01]\d|2[0-3]):[0-5]\d$/,YMD=/^\d{4}-\d{2}-\d{2}$/;
+  function checkTimes(st,en){if(st&&!HM.test(st))return 'Start time is not valid.';if(en&&!HM.test(en))return 'End time is not valid.';if(en&&!st)return 'An end time needs a start time.';if(st&&en&&en<=st)return 'End time must be after the start.';return ''}
+  function apply(a){
+    if(a.type==='add_task'){
+      const title=String(a.title||'').trim(),due=String(a.due||''),st=a.startTime||'',en=a.endTime||'';
+      if(title.length<3)return 'Task name is too short.';if(!YMD.test(due)||isNaN(new Date(due)))return 'The due date is not valid.';
+      const te=checkTimes(st,en);if(te)return te;
+      const n={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),no:nextNo(),task:title.slice(0,140),details:String(a.details||'').slice(0,600),due,startTime:st,endTime:en,entered:today(),assigned:String(a.assigned||'').slice(0,80),status:'Pending',priority:a.priority==='High'?'High':'Normal',remark:'',alarmAt:'',repeat:'none',alarmFired:false,updated:new Date().toISOString()};
+      tasks.push(n);persist(n);refreshAll();return '';
+    }
+    const t=tasks.find(x=>x.id===a.id);if(!t)return 'That task no longer exists.';
+    if(a.type==='set_status'){if(!STAT.includes(a.status))return 'Status is not valid.';setStatus(t.id,a.status);return ''}
+    if(a.type==='update_task'){const c=a.changes||{},n={};
+      if(c.due){if(!YMD.test(c.due)||isNaN(new Date(c.due)))return 'The due date is not valid.';n.due=c.due}
+      const st=c.startTime!==undefined&&c.startTime!==''?c.startTime:t.startTime,en=c.endTime!==undefined&&c.endTime!==''?c.endTime:t.endTime;
+      if(c.startTime||c.endTime){const te=checkTimes(st,en);if(te)return te;n.startTime=st||'';n.endTime=en||''}
+      if(c.assigned)n.assigned=String(c.assigned).slice(0,80);if(c.priority==='High'||c.priority==='Normal')n.priority=c.priority;
+      if(c.remark)n.remark=String(c.remark).slice(0,200);if(c.details)n.details=String(c.details).slice(0,600);
+      if(!Object.keys(n).length)return 'Nothing to change.';
+      Object.assign(t,n,{updated:new Date().toISOString()});persist(t);refreshAll();return '';
+    }
+    return 'Unknown action.';
+  }
+  function actionCard(a){
+    const d=document.createElement('div');d.className='ai-act';
+    const p=document.createElement('div');p.style.whiteSpace='pre-wrap';p.textContent=describe(a);d.appendChild(p);
+    const r=document.createElement('div');r.className='rowacts';
+    const ok=document.createElement('button');ok.type='button';ok.className='btn sm pri';ok.textContent='Confirm';
+    const no=document.createElement('button');no.type='button';no.className='btn sm';no.textContent='Dismiss';
+    r.append(ok,no);d.appendChild(r);
+    ok.onclick=()=>{const err=apply(a);r.remove();d.classList.add('done');const s=document.createElement('div');s.className='m';s.style.cssText='margin-top:6px;color:'+(err?'var(--bad)':'var(--good)');s.textContent=err||'Done';d.appendChild(s)};
+    no.onclick=()=>{r.remove();d.classList.add('done');const s=document.createElement('div');s.className='m';s.style.cssText='margin-top:6px;color:var(--muted)';s.textContent='Dismissed';d.appendChild(s)};
+    msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+  }
+  function compact(){
+    return tasks.filter(t=>t.status!=='Completed'||dayDiff(today(),t.due)<=60).slice(0,200).map(t=>({id:t.id,task:t.task,due:t.due,start:t.startTime||'',end:t.endTime||'',assigned:t.assigned||'',status:t.status,priority:t.priority,remark:t.remark||'',details:(t.details||'').slice(0,120)}));
+  }
+  async function ask(text){
+    if(busy)return;busy=true;$a('aiSend').disabled=true;say('u',text);const wait=say('a','Thinking…');
+    try{
+      const n=new Date();
+      const r=await fetch('/api/assistant',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},accessCode?{'x-access-code':accessCode}:{}),body:JSON.stringify({message:text,history:hist.slice(-8),today:n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' ('+today()+')',nowTime:n.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:false}),tasks:compact()})});
+      let j=null;try{j=await r.json()}catch(e){}
+      wait.remove();
+      if(r.status===401){askCode(text);return}
+      if(r.status===404){say('e','The assistant service was not found. It works only after the site is deployed on Vercel with the api folder.');return}
+      if(!r.ok||!j){say('e',(j&&j.error)||'Something went wrong. Please try again.');return}
+      say('a',j.reply||'Done.');hist.push({role:'user',text},{role:'model',text:j.reply||''});
+      (j.actions||[]).forEach(actionCard);
+    }catch(e){wait.remove();say('e','Could not reach the assistant. Check your internet connection.')}
+    finally{busy=false;$a('aiSend').disabled=false}
+  }
+  function askCode(retryText){
+    const d=document.createElement('div');d.className='ai-act';
+    d.innerHTML='<div>Enter the access code for the assistant.</div><div class="rowacts"><input type="password" id="aiCode" style="max-width:180px" aria-label="Access code"><button type="button" class="btn sm pri" id="aiCodeOk">Save and retry</button></div>';
+    msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;
+    d.querySelector('#aiCodeOk').onclick=()=>{accessCode=d.querySelector('#aiCode').value.trim();try{localStorage.setItem(CK,accessCode)}catch(e){}d.remove();busy=false;$a('aiSend').disabled=false;ask(retryText)};
+    busy=false;$a('aiSend').disabled=false;
+  }
+})();
+
 /* ---------- boot ---------- */
 (function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite();purgeSeeds();renumber()})();
 buildView();
-initDb();
+initRemote();
 setInterval(tick,1000);tick();
 
 /* ---------- 3D background ---------- */
