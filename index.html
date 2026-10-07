@@ -28,12 +28,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mast{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;margin-inline:-16px;padding:12px 16px;background:linear-gradient(var(--bg),rgba(10,17,30,.88));backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.mast-in{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+.mast-in{max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
 .brand{display:flex;flex-direction:column;min-width:0}
-.brand b{font:600 22px/1.1 var(--f-display);letter-spacing:.2px}
+.brand b{font:600 20px/1.1 var(--f-display);letter-spacing:.2px}
 .brand span{font:500 11px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;flex:1;min-width:0}
-.tab{background:none;border:1px solid transparent;border-radius:8px;padding:7px 13px;color:var(--muted);font-weight:500;display:flex;gap:8px;align-items:center}
+.tabs{display:flex;gap:2px;flex-wrap:nowrap;flex:1 1 auto;min-width:max-content}
+.tab{background:none;border:1px solid transparent;border-radius:8px;padding:7px 10px;white-space:nowrap;color:var(--muted);font-weight:500;display:flex;gap:8px;align-items:center}
 .tab:hover{color:var(--fg);background:rgba(255,255,255,.05)}
 .tab[aria-current=page]{color:var(--fg);background:var(--raised);border-color:var(--line)}
 .tab .n{font:500 11px var(--f-mono);background:rgba(226,178,76,.16);color:var(--accent);padding:1px 7px;border-radius:99px}
@@ -162,7 +162,7 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 .ring-card .rowacts{flex-wrap:wrap;margin-top:12px}
 .note{font-size:12px;color:var(--muted);margin-top:14px}
 @media (max-width:980px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.grid2,.cal{grid-template-columns:minmax(0,1fr)}.tiles .tile:last-child{grid-column:1/-1}}
-@media (max-width:640px){.alrow.slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.alrow.slot .chip{grid-column:1/-1;justify-self:start}.bigclk{font-size:38px}.alrow{grid-template-columns:minmax(0,1fr)}.clock{align-items:flex-start;order:3}.first{display:none}.day{min-height:48px;aspect-ratio:1/1}.modal form{grid-template-columns:minmax(0,1fr)}.tile .v{font-size:30px}.brand b{font-size:19px}h2{font-size:22px}}
+@media (max-width:640px){.tabs{min-width:0;width:100%;overflow-x:auto;flex:1 1 100%}.alrow.slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.alrow.slot .chip{grid-column:1/-1;justify-self:start}.bigclk{font-size:38px}.alrow{grid-template-columns:minmax(0,1fr)}.clock{align-items:flex-start;order:3}.first{display:none}.day{min-height:48px;aspect-ratio:1/1}.modal form{grid-template-columns:minmax(0,1fr)}.tile .v{font-size:30px}.brand b{font-size:19px}h2{font-size:22px}}
 @media (min-width:641px){.dots small.m{display:none}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .ai-btn{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40;background:var(--accent);color:var(--accent-ink);border:0;border-radius:99px;padding:11px 18px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.45)}
@@ -413,7 +413,7 @@ function histFiltered(){const f=ui.hist,T=today();
     if(f.dFrom&&t.due<f.dFrom)return false; if(f.dTo&&t.due>f.dTo)return false;
     return matchQ(t,f.q)}),f)}
 function histBuild(){const f=ui.hist;main.innerHTML=`
- <div class="head"><div><h2>Old Data</h2><p class="sub">Every task ever entered stays here. Search or filter to find older records.</p></div><button class="btn" type="button" data-act="hreset">Clear filters</button></div>
+ <div class="head"><div><h2>Old Data</h2><p class="sub">Every task ever entered stays here. Search or filter to find older records.</p></div><div class="acts"><button class="btn" type="button" data-act="import">Import Excel</button><button class="btn" type="button" data-act="hreset">Clear filters</button></div></div>
  <section class="panel">
   <div class="presets" id="h_pre" role="group" aria-label="Quick date range (by date entered)"></div>
   <div class="tools">
@@ -547,6 +547,59 @@ document.addEventListener('click',e=>{
   else if(a==='notify'){enableNotify()}
 });
 document.addEventListener('change',e=>{const s=e.target.closest('[data-act=status]');if(s)setStatus(s.dataset.id,s.value)});
+
+/* ---------- import from Excel (files made by Download Excel) ---------- */
+(function(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.xlsx';inp.hidden=true;document.body.appendChild(inp);
+  const cv=v=>{if(v==null)return '';if(v instanceof Date)return v;if(typeof v==='object'){if(v.richText)return v.richText.map(r=>r.text).join('');if('result' in v)return cv(v.result);if(v.text)return String(v.text);return ''}return v};
+  const pad=n=>String(n).padStart(2,'0');
+  const isoD=d=>d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate());
+  function toIso(v){v=cv(v);if(v==='')return '';
+    if(v instanceof Date)return isNaN(v)?'':isoD(v);
+    if(typeof v==='number'&&v>20000&&v<80000)return isoD(new Date(Math.round((v-25569)*864e5)));
+    const x=String(v).trim();let m;
+    if((m=x.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)))return m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);
+    if((m=x.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/))){let y=+m[3];if(y<100)y+=2000;return y+'-'+pad(+m[2])+'-'+pad(+m[1])}
+    const d=new Date(x+' UTC');return isNaN(d)?'':isoD(d)}
+  function toSlot(v){v=String(cv(v)||'');const r=[...v.matchAll(/(\d{1,2}):(\d{2})\s*([ap]m)?/gi)].map(m=>{let h=+m[1];const ap=(m[3]||'').toLowerCase();if(ap==='pm'&&h<12)h+=12;if(ap==='am'&&h===12)h=0;return pad(h)+':'+m[2]});return [r[0]||'',r[1]||'']}
+  const norm=x=>String(cv(x)||'').toLowerCase().replace(/[^a-z]/g,'');
+  const HEAD={sno:['sno','srno','no'],entered:['dateentered','entered','entrydate'],task:['taskactivity','task','activity'],details:['details','detail'],due:['duedate','due'],slot:['timeslot','time'],assigned:['assignedfaculty','assigned','faculty','assignedto'],status:['status'],priority:['priority'],remark:['remark','remarks'],updated:['lastupdated','updated']};
+  function parseSheet(ws){
+    let hr=0,map={};
+    ws.eachRow({includeEmpty:false},(row,n)=>{if(hr)return;const m={};row.eachCell((c,i)=>{const k=norm(c.value);for(const f in HEAD)if(HEAD[f].includes(k)&&!(f in m))m[f]=i});if(m.task&&m.due){hr=n;map=m}});
+    if(!hr)return null;
+    const out=[];
+    for(let n=hr+1;n<=ws.rowCount;n++){const row=ws.getRow(n),g=f=>map[f]?cv(row.getCell(map[f]).value):'';
+      const task=String(g('task')||'').trim();if(!task)continue;
+      const due=toIso(g('due'));if(!due)continue;
+      const st=String(g('status')||'').trim().toLowerCase();
+      const status=STAT.find(x=>x.toLowerCase()===st)||(/process|progress|ongoing/.test(st)?'In Process':/done|complete/.test(st)?'Completed':'Pending');
+      const sl=toSlot(g('slot'));const as=String(g('assigned')||'').trim();
+      const up=g('updated');
+      out.push({task,details:String(g('details')||'').trim(),due,startTime:sl[0],endTime:sl[1]&&sl[1]>sl[0]?sl[1]:'',entered:toIso(g('entered'))||due,assigned:/^unassigned$/i.test(as)?'':as,status,priority:/high/i.test(String(g('priority')))?'High':'Normal',remark:String(g('remark')||'').trim(),alarmAt:'',repeat:'none',alarmFired:false,updated:(up instanceof Date&&!isNaN(up))?up.toISOString():new Date().toISOString()})}
+    return out}
+  const key=t=>[t.task,t.due,t.assigned||''].map(x=>String(x).trim().toLowerCase()).join('|');
+  inp.onchange=async()=>{const f=inp.files[0];inp.value='';if(!f)return;
+    if(!window.ExcelJS){toast('Excel library did not load. Check the connection and try again.');return}
+    let rows=null;
+    try{const wb=new ExcelJS.Workbook();await wb.xlsx.load(await f.arrayBuffer());for(const ws of wb.worksheets){rows=parseSheet(ws);if(rows)break}}catch(e){rows=null}
+    if(!rows){toast('Could not read that file. Use the .xlsx made by Download Excel.');return}
+    if(!rows.length){toast('No task rows found in that file.');return}
+    const have=new Set(tasks.map(key)),seen=new Set(),fresh=[];
+    rows.forEach(r=>{const k=key(r);if(have.has(k)||seen.has(k))return;seen.add(k);fresh.push(r)});
+    const dup=rows.length-fresh.length;
+    openModal(`<h3>Import from Excel</h3><p class="sub">${esc(f.name)}</p>
+      <p style="margin:12px 0">Found <b>${rows.length}</b> records. <b>${fresh.length}</b> will be added${dup?` and <b>${dup}</b> skipped because they are already here`:''}.</p>
+      <p class="sub">Imported tasks keep their dates, status and remark. Alarms are not imported.</p>
+      <div class="acts" style="margin-top:16px;justify-content:flex-end"><button class="btn" type="button" id="impNo">Cancel</button><button class="btn pri" type="button" id="impGo"${fresh.length?'':' disabled'}>Add ${fresh.length} records</button></div>`,m=>{
+      m.querySelector('#impNo').onclick=closeModal;
+      m.querySelector('#impGo').onclick=()=>{m.querySelector('#impGo').disabled=true;
+        fresh.sort((a,b)=>a.entered.localeCompare(b.entered)||a.due.localeCompare(b.due));
+        let no=nextNo();const added=fresh.map((r,i)=>Object.assign({id:'t'+Date.now().toString(36)+i.toString(36)+Math.random().toString(36).slice(2,5),no:no++},r));
+        tasks.push(...added);lsWrite();added.forEach(dbSet);renumber();closeModal();refreshAll();toast(added.length+' records imported')}})};
+  document.addEventListener('click',e=>{if(e.target.closest('[data-act=import]'))inp.click()});
+})();
+
 $('#btnAdd').onclick=()=>taskForm(null,ui.view==='calendar'?ui.cal.sel:'');
 $('#btnXls').onclick=openExport;
 
@@ -676,7 +729,7 @@ async function poll(){
   try{const j=await pull();if(j&&j.tasks&&!pend.up.size&&!pend.rm.size&&applyRemote(j.tasks)){lsWrite();refreshAll()}}catch(e){}
 }
 
-/* ---------- AI assistant (Gemini via /api/assistant) ---------- */
+/* ---------- AI assistant (via /api/assistant) ---------- */
 (function(){
   const CK='rathor-ai-code';let hist=[],busy=false;
   const wrap=document.createElement('div');
