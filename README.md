@@ -1,4 +1,4 @@
-# Rathor Task Tracker (Vercel + Redis database + Gemini assistant)
+# Rathor Task Tracker (Vercel + Redis database + Nvidia assistant)
 
 Tasks are stored in a cloud database, so every browser and device shows the same data.
 
@@ -19,8 +19,8 @@ Files:
      UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN and KV_REST_API_URL / KV_REST_API_TOKEN.
 4. Open Settings, Environment Variables, and add:
    - `ACCESS_CODE`     any word you choose (strongly recommended, see below)
-   - `GEMINI_API_KEY`  free key from https://aistudio.google.com/apikey (only for the assistant)
-   - `GEMINI_MODEL`    optional, defaults to gemini-2.5-flash
+   - `NVIDIA_API_KEY`  free key from https://aistudio.google.com/apikey (only for the assistant)
+   - `NVIDIA_MODEL`    optional, defaults to gemini-2.5-flash
 5. Open Deployments and Redeploy so the variables take effect.
 
 ## How it behaves
