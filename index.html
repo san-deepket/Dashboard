@@ -28,17 +28,17 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mast{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;margin-inline:-16px;padding:12px 16px;background:linear-gradient(var(--bg),rgba(10,17,30,.88));backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.mast-in{max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.mast-in{max-width:1400px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 12px}
 .brand{display:flex;flex-direction:column;min-width:0}
 .brand b{font:600 20px/1.1 var(--f-display);letter-spacing:.2px}
 .brand span{font:500 11px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .tabs{display:flex;gap:2px;flex-wrap:nowrap;flex:1 1 auto;min-width:max-content}
-.tab{background:none;border:1px solid transparent;border-radius:8px;padding:7px 10px;white-space:nowrap;color:var(--muted);font-weight:500;display:flex;gap:8px;align-items:center}
+.tab{background:none;border:1px solid transparent;border-radius:8px;padding:7px 8px;white-space:nowrap;color:var(--muted);font-weight:500;display:flex;gap:8px;align-items:center}
 .tab:hover{color:var(--fg);background:rgba(255,255,255,.05)}
 .tab[aria-current=page]{color:var(--fg);background:var(--raised);border-color:var(--line)}
 .tab .n{font:500 11px var(--f-mono);background:rgba(226,178,76,.16);color:var(--accent);padding:1px 7px;border-radius:99px}
 .acts{display:flex;gap:8px;flex-wrap:wrap}
-.btn{border:1px solid var(--line);background:var(--raised);border-radius:8px;padding:8px 14px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.btn{border:1px solid var(--line);background:var(--raised);border-radius:8px;padding:8px 12px;font-weight:500;display:inline-flex;align-items:center;gap:8px}
 .btn:hover{border-color:rgba(150,172,208,.4)}
 .btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .btn.pri:hover{filter:brightness(1.08)}
@@ -181,6 +181,23 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 .ai-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 10px}
 .ai-form{display:flex;gap:8px;padding:10px 14px 14px;border-top:1px solid var(--line)}
 .ai-form input{flex:1}
+.vchips{display:flex;flex-wrap:wrap;gap:8px}
+.vchip{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(226,178,76,.45);background:rgba(226,178,76,.12);color:var(--accent);border-radius:99px;padding:4px 6px 4px 12px;font-size:13px}
+.vchip button{background:none;border:0;color:inherit;font-size:16px;line-height:1;padding:0 6px;cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{border:1px solid var(--line);background:var(--raised);border-radius:99px;padding:5px 12px;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.chip.on{border-color:var(--accent);color:var(--accent)}
+.chip .n{font:500 11px var(--f-mono);color:var(--muted)}
+.mrow{border:1px solid var(--line);border-left:3px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px;background:rgba(255,255,255,.02)}
+.mrow.imp{border-left-color:var(--accent);background:rgba(226,178,76,.06)}
+.mrow.unr .msub{font-weight:600}
+.mtop{display:flex;justify-content:space-between;gap:12px}
+.mfrom{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mdate{font:500 12px var(--f-mono);color:var(--muted);white-space:nowrap}
+.msub{margin-top:2px;overflow-wrap:anywhere}
+.msum{margin-top:4px;color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+.mfoot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.mfoot a.btn{text-decoration:none}
 
 .sync{font:500 11px var(--f-mono);color:var(--muted);align-self:center;padding:0 4px}
 .sync[data-s=Offline]{color:var(--bad)}
@@ -313,14 +330,14 @@ function confirmDelete(id){const t=tasks.find(x=>x.id===id);if(!t)return;
 
 /* ---------- rendering ---------- */
 const main=$('#main');
-const TABS=[['dashboard','Dashboard'],['sheet','Working Sheet'],['calendar','Calendar'],['history','Old Data'],['alarms','Alarms']];
+const TABS=[['dashboard','Dashboard'],['sheet','Working Sheet'],['calendar','Calendar'],['history','Old Data'],['alarms','Alarms'],['inbox','Inbox']];
 function renderTabs(){
   const active=tasks.filter(t=>t.status!=='Completed').length,alN=tasks.filter(hasAlarm).length;
-  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab" type="button" data-act="view" data-v="${k}" ${ui.view===k?'aria-current="page"':''}>${l}${k==='sheet'?'<span class="n">'+active+'</span>':k==='alarms'&&alN?'<span class="n">'+alN+'</span>':''}</button>`).join('');
+  $('#tabs').innerHTML=TABS.map(([k,l])=>`<button class="tab" type="button" data-act="view" data-v="${k}" ${ui.view===k?'aria-current="page"':''}>${l}${k==='sheet'?'<span class="n">'+active+'</span>':k==='alarms'&&alN?'<span class="n">'+alN+'</span>':k==='inbox'&&mailBadge?'<span class="n">'+mailBadge+'</span>':''}</button>`).join('');
 }
 function go(v){ui.view=v;buildView();renderTabs();window.scrollTo({top:0})}
-function refreshAll(){renderTabs();({dashboard:dashRefresh,sheet:sheetRefresh,calendar:calRefresh,history:histRefresh,alarms:alarmRefresh})[ui.view]()}
-function buildView(){({dashboard:dashBuild,sheet:sheetBuild,calendar:calBuild,history:histBuild,alarms:alarmBuild})[ui.view]();refreshAll()}
+function refreshAll(){renderTabs();({dashboard:dashRefresh,sheet:sheetRefresh,calendar:calRefresh,history:histRefresh,alarms:alarmRefresh,inbox:inboxRefresh})[ui.view]()}
+function buildView(){({dashboard:dashBuild,sheet:sheetBuild,calendar:calBuild,history:histBuild,alarms:alarmBuild,inbox:inboxBuild})[ui.view]();refreshAll()}
 
 function pillSt(t){return '<span class="pill '+sCls(t.status)+'">'+esc(t.status)+'</span>'}
 function stSelect(t){return '<select class="stsel '+sCls(t.status)+'" data-act="status" data-id="'+esc(t.id)+'" aria-label="Status of '+esc(t.task)+'">'+STAT.map(s=>'<option'+(s===t.status?' selected':'')+'>'+s+'</option>').join('')+'</select>'}
@@ -818,6 +835,92 @@ async function poll(){
     busy=false;$a('aiSend').disabled=false;
   }
 })();
+
+/* ---------- inbox agent (Vercel /api/mail) ---------- */
+let mailBadge=0;
+const MAIL={items:[],vips:[],configured:null,aiError:'',err:'',loading:false,filter:'important',fetchedAt:''};
+const SEEN_K='rathor-mail-seen',ADDED_K='rathor-mail-added';
+const lsGetSet=k=>{try{return new Set(JSON.parse(localStorage.getItem(k)||'[]'))}catch(e){return new Set()}};
+const lsPutSet=(k,s)=>{try{localStorage.setItem(k,JSON.stringify([...s].slice(-400)))}catch(e){}};
+let mailSeen=lsGetSet(SEEN_K),mailAdded=lsGetSet(ADDED_K),mailFirst=!localStorage.getItem(SEEN_K),mailTimer=null,mailAlerts=true;
+try{mailAlerts=localStorage.getItem('rathor-mail-alerts')!=='off'}catch(e){}
+const MCAT={Urgent:'bad',Task:'warn',Meeting:'info',FYI:'',Promo:''};
+function mailWhen(iso){if(!iso)return '';const d=new Date(iso);return d.toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',hour12:true})}
+function mailAlert(it){
+  const who=it.from.name||it.from.address;
+  toast((it.vip?'Important person · ':'Urgent · ')+who+': '+it.subject);
+  beep();
+  try{if(typeof Notification!=='undefined'&&Notification.permission==='granted')new Notification((it.vip?'Important email from ':'Urgent email from ')+who,{body:it.subject+(it.summary?'\n'+it.summary:'')})}catch(e){}
+}
+async function mailLoad(opts){
+  opts=opts||{};if(MAIL.loading)return;MAIL.loading=true;MAIL.err='';if(ui.view==='inbox')inboxRefresh();
+  try{
+    const r=await fetch('/api/mail'+(opts.force?'?refresh=1':''),{headers:hdr(),cache:'no-store'});
+    if(r.status===401){MAIL.loading=false;if(!opts.silent)askAccess(()=>mailLoad(opts));return}
+    if(r.status===404){MAIL.configured=false;MAIL.err='The inbox needs the Vercel site (this copy has no server).';throw new Error('x')}
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Could not load the inbox.');
+    MAIL.configured=d.configured!==false;MAIL.vips=d.vips||MAIL.vips;MAIL.items=d.items||[];MAIL.aiError=d.aiError||'';MAIL.fetchedAt=d.fetchedAt||'';
+    // alerts for newly arrived important mail
+    const fresh=MAIL.items.filter(m=>m.important&&m.unread&&!mailSeen.has(m.id));
+    MAIL.items.forEach(m=>mailSeen.add(m.id));lsPutSet(SEEN_K,mailSeen);
+    if(!mailFirst&&mailAlerts)fresh.slice(0,3).forEach(mailAlert);
+    mailFirst=false;
+  }catch(e){if(e.message!=='x')MAIL.err=e.message||'Could not load the inbox.'}
+  MAIL.loading=false;
+  mailBadge=MAIL.items.filter(m=>m.important&&m.unread).length;renderTabs();
+  if(ui.view==='inbox')inboxRefresh();
+}
+function mailStart(){clearInterval(mailTimer);mailLoad({silent:true}).then(()=>{if(MAIL.configured)mailTimer=setInterval(()=>mailLoad({silent:true}),120000)})}
+async function mailSaveVips(v){
+  MAIL.vips=v;inboxRefresh();
+  try{const r=await fetch('/api/mail',{method:'POST',headers:hdr(),body:JSON.stringify({vips:v})});if(r.status===401){askAccess(()=>mailSaveVips(v));return}if(!r.ok)throw 0;const d=await r.json();MAIL.vips=d.vips;
+    const vv=MAIL.vips;MAIL.items.forEach(m=>{const h=((m.from.address||'')+' '+(m.from.name||'')).toLowerCase();m.vip=vv.some(x=>x&&h.includes(String(x).toLowerCase()));m.important=m.vip||m.category==='Urgent'});
+    mailBadge=MAIL.items.filter(m=>m.important&&m.unread).length;renderTabs();inboxRefresh()}
+  catch(e){toast('Could not save the list. Try again.')}
+}
+function inboxBuild(){
+  main.innerHTML=`<div class="head"><div><h2>Inbox</h2><p class="sub">Your mail from the last 3 days, sorted by the assistant. Mail from your important people is marked and shown first.</p></div>
+  <div class="acts"><button class="btn" type="button" data-mact="alerts" id="m_al"></button><button class="btn" type="button" data-mact="refresh" id="m_rf">Refresh</button></div></div>
+  <section class="panel" id="m_vip"></section>
+  <section class="panel" id="m_list" style="margin-top:16px"></section>`;
+}
+function inboxRefresh(){
+  if(ui.view!=='inbox'||!$('#m_vip'))return;
+  const al=$('#m_al');al.textContent=mailAlerts?'Alerts on':'Alerts off';
+  const rf=$('#m_rf');rf.disabled=MAIL.loading;rf.textContent=MAIL.loading?'Loading…':'Refresh';
+  $('#m_vip').innerHTML=`<h3 style="margin:0 0 4px">Important people</h3><p class="sub" style="margin:0 0 10px">Type an email address, a domain such as <b>gla.ac.in</b>, or part of a name. Their mail is starred and triggers a pop-up.</p>
+  <div class="vchips">${MAIL.vips.map((v,i)=>`<span class="vchip">★ ${esc(v)}<button type="button" data-mact="vdel" data-i="${i}" aria-label="Remove ${esc(v)}">×</button></span>`).join('')||'<span class="sub">No one added yet.</span>'}</div>
+  <form id="m_vf" style="display:flex;gap:8px;margin-top:10px"><input id="m_vi" placeholder="name@example.com or gla.ac.in" aria-label="Add important person" style="flex:1;min-width:0"><button class="btn pri" type="submit">Add</button></form>`;
+  $('#m_vf').onsubmit=e=>{e.preventDefault();const v=$('#m_vi').value.trim();if(!v)return;if(!MAIL.vips.some(x=>x.toLowerCase()===v.toLowerCase()))mailSaveVips(MAIL.vips.concat(v));else $('#m_vi').value=''};
+  const L=$('#m_list');
+  if(MAIL.configured===false&&!MAIL.err){L.innerHTML=`<h3 style="margin:0 0 6px">Connect Gmail</h3><p class="sub">Add two settings in Vercel, then redeploy: <b>GMAIL_USER</b> (your Gmail address) and <b>GMAIL_APP_PASSWORD</b> (a 16-letter Google app password). The README has the steps.</p>`;return}
+  if(MAIL.err){L.innerHTML=`<p style="color:var(--bad)">${esc(MAIL.err)}</p>`;return}
+  if(MAIL.configured===null){L.innerHTML='<p class="sub">Loading your inbox…</p>';return}
+  const F=MAIL.filter,cnt=k=>k==='all'?MAIL.items.length:k==='important'?MAIL.items.filter(m=>m.important).length:MAIL.items.filter(m=>m.category===k).length;
+  const chips=['important','all','Urgent','Task','Meeting','FYI','Promo'].map(k=>`<button type="button" class="chip${F===k?' on':''}" data-mact="filter" data-k="${k}">${k==='important'?'Important':k==='all'?'All':k} <span class="n">${cnt(k)}</span></button>`).join('');
+  const list=MAIL.items.filter(m=>F==='all'||(F==='important'?m.important:m.category===F)).sort((a,b)=>(b.important-a.important)||String(b.date).localeCompare(String(a.date)));
+  L.innerHTML=(MAIL.aiError?`<p class="sub" style="color:var(--warn)">${esc(MAIL.aiError)}</p>`:'')+`<div class="chips" role="group" aria-label="Filter mail">${chips}</div>`+
+  (list.length?list.map(m=>{const done=mailAdded.has(m.id);return `<article class="mrow${m.important?' imp':''}${m.unread?' unr':''}">
+   <div class="mtop"><b class="mfrom">${m.vip?'★ ':''}${esc(m.from.name||m.from.address)}</b><span class="mdate">${esc(mailWhen(m.date))}</span></div>
+   <div class="msub">${esc(m.subject)}</div>
+   <div class="msum">${esc(m.summary)}</div>
+   <div class="mfoot">${m.category?`<span class="pill ${MCAT[m.category]||''}">${esc(m.category)}</span>`:''}${m.vip?'<span class="pill">Important person</span>':''}
+    <span style="flex:1"></span>
+    <button class="btn sm" type="button" data-mact="task" data-id="${esc(m.id)}"${done?' disabled':''}>${done?'Added to sheet':'Make task'}</button>
+    <a class="btn sm" target="_blank" rel="noopener" href="https://mail.google.com/mail/u/0/#search/${encodeURIComponent('subject:"'+m.subject.replace(/"/g,'')+'"')}">Open in Gmail</a></div></article>`}).join(''):'<p class="sub" style="margin-top:12px">Nothing here.</p>')+
+  (MAIL.fetchedAt?`<p class="sub" style="margin-top:12px">Updated ${esc(mailWhen(MAIL.fetchedAt))}. Checks again every 2 minutes while this page is open.</p>`:'');
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-mact]');if(!b)return;const a=b.dataset.mact;
+  if(a==='refresh')mailLoad({force:true});
+  else if(a==='alerts'){mailAlerts=!mailAlerts;try{localStorage.setItem('rathor-mail-alerts',mailAlerts?'on':'off')}catch(x){}if(mailAlerts){unlock();try{if(typeof Notification!=='undefined'&&Notification.permission==='default')Notification.requestPermission()}catch(x){}}inboxRefresh()}
+  else if(a==='vdel')mailSaveVips(MAIL.vips.filter((_,i)=>i!==+b.dataset.i));
+  else if(a==='filter'){MAIL.filter=b.dataset.k;inboxRefresh()}
+  else if(a==='task'){const m=MAIL.items.find(x=>x.id===b.dataset.id);if(!m)return;
+    const n={id:'t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),no:nextNo(),task:m.subject.slice(0,200),details:('From '+(m.from.name||m.from.address)+'. '+m.summary).slice(0,600),due:today(),startTime:'',endTime:'',entered:today(),assigned:'',status:'Pending',priority:m.important?'High':'Normal',remark:'From email',alarmAt:'',repeat:'none',alarmFired:false,updated:new Date().toISOString()};
+    tasks.push(n);persist(n);mailAdded.add(m.id);lsPutSet(ADDED_K,mailAdded);renderTabs();inboxRefresh();toast('Added to the Working Sheet')}
+});
+setTimeout(mailStart,3500);
 
 /* ---------- boot ---------- */
 (function(){const s=lsRead();tasks=Array.isArray(s)?s:SEED.slice();if(!Array.isArray(s))lsWrite();purgeSeeds();renumber()})();
