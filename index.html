@@ -202,41 +202,12 @@ td.num{font-family:var(--f-mono);color:var(--muted);width:56px}
 .sync{font:500 11px var(--f-mono);color:var(--muted);align-self:center;padding:0 4px}
 .sync[data-s=Offline]{color:var(--bad)}
 .sync[data-s=Saved]{color:var(--good)}
-/* ===== colour refresh: less black, more colour ===== */
-:root{
-  --bg:#14204a; --panel:rgba(28,42,92,.72); --panel-solid:#1c2b5e; --raised:#27398080;
-  --raised:#2a3d85; --line:rgba(160,185,255,.24); --fg:#f2f5ff; --muted:#aebbe0;
-  --accent:#ffc23d; --accent-ink:#2a1d00; --teal:#2ee6c8;
-  --good:#3ddc97; --warn:#ffa64d; --bad:#ff6b8a; --info:#5ab0ff;
-}
-body{background:#14204a}
-#bg{background:
-  radial-gradient(900px 600px at 85% 0%,rgba(255,92,170,.30) 0%,transparent 60%),
-  radial-gradient(900px 650px at 0% 25%,rgba(46,230,200,.22) 0%,transparent 60%),
-  radial-gradient(1000px 700px at 60% 105%,rgba(139,92,255,.35) 0%,transparent 60%),
-  linear-gradient(160deg,#1a2a63 0%,#14204a 55%,#2a1b5c 100%)}
-.mast{background:linear-gradient(90deg,rgba(26,42,99,.95),rgba(58,32,110,.92));border-bottom:1px solid rgba(255,194,61,.35)}
-.brand b{background:linear-gradient(90deg,#ffe08a,#ff9ed1);-webkit-background-clip:text;background-clip:text;color:transparent}
-.tab[aria-current=page]{background:linear-gradient(135deg,#7c5cff,#2ee6c8);color:#0b1030;border-color:transparent;font-weight:600}
-.tab[aria-current=page] .n{background:rgba(255,255,255,.55);color:#0b1030}
-.tab:hover{background:rgba(255,255,255,.1)}
-.btn{background:rgba(255,255,255,.1)}
-.btn.pri{background:linear-gradient(135deg,#ffc23d,#ff8a5c);border-color:transparent}
-.panel{background:linear-gradient(180deg,rgba(60,78,150,.55),rgba(28,42,92,.7));border-top:3px solid #7c5cff}
-.grid2>.panel:nth-child(2n){border-top-color:#2ee6c8}
-.grid2>.panel:nth-child(3n){border-top-color:#ff6bb5}
-.tile{background:linear-gradient(160deg,color-mix(in srgb,var(--c) 38%,#1c2b5e),#1c2b5e 85%);border-color:color-mix(in srgb,var(--c) 55%,transparent)}
-.tile::after{height:4px}
-.tile .v{color:#fff}
-th{background:linear-gradient(90deg,#3a4fb0,#6a43b8);color:#fff}
-tbody tr:nth-child(even) td{background:rgba(255,255,255,.04)}
-tbody tr:hover td{background:rgba(255,194,61,.1)}
-.day{background:rgba(255,255,255,.07)}
-.day.sel{background:rgba(46,230,200,.18)}
-.item:hover{background:rgba(255,255,255,.08)}
-input,select,textarea{background:rgba(10,16,48,.45)}
-.modal{background:#1f2f6b}
-.site-foot b{color:var(--accent)}
+/* KPI cards: each one has its own colour so they are easy to tell apart */
+.tile{background:linear-gradient(160deg,color-mix(in srgb,var(--c) 30%,#0f1828),#0f1828 88%);border:1px solid color-mix(in srgb,var(--c) 70%,transparent)}
+.tile:hover{border-color:var(--c);transform:translateY(-2px);transition:transform .15s}
+.tile .k{color:var(--c);font-weight:600}
+.tile .v{color:var(--c)}
+.tile::after{height:5px}
 </style>
 </head>
 <body>
@@ -969,63 +940,26 @@ setInterval(tick,1000);tick();
   try{
     const cv=$('#bg'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
     R.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
-    const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(55,1,.1,300);C.position.set(0,2,18);
-    const PINK=0xff5fb0,TEAL=0x2ee6c8,GOLD=0xffc23d,VIOL=0x8b6bff,BLUE=0x5ab0ff;
-    /* lights: three coloured lights make the knot glow in several hues */
-    S.add(new THREE.AmbientLight(0x6670b0,.7));
-    const L1=new THREE.PointLight(PINK,2.2,60);L1.position.set(-6,6,8);S.add(L1);
-    const L2=new THREE.PointLight(TEAL,2.2,60);L2.position.set(10,-3,6);S.add(L2);
-    const L3=new THREE.PointLight(GOLD,1.6,60);L3.position.set(2,9,-2);S.add(L3);
-
-    /* hero: glossy torus knot with a wireframe shell, plus orbiting gems */
-    const hero=new THREE.Group();S.add(hero);
-    const knot=new THREE.Mesh(new THREE.TorusKnotGeometry(3,.85,220,28,2,3),new THREE.MeshStandardMaterial({color:0x8b6bff,metalness:.55,roughness:.28,emissive:0x1a1050,emissiveIntensity:.6}));
-    hero.add(knot);
-    const shell=new THREE.Mesh(new THREE.TorusKnotGeometry(3,1.05,120,12,2,3),new THREE.MeshBasicMaterial({color:TEAL,wireframe:true,transparent:true,opacity:.18}));
-    hero.add(shell);
-    const gems=[],cols=[PINK,TEAL,GOLD,BLUE,VIOL,PINK,TEAL,GOLD];
-    cols.forEach((c,i)=>{
-      const m=new THREE.Mesh(i%2?new THREE.OctahedronGeometry(.55,0):new THREE.IcosahedronGeometry(.5,0),new THREE.MeshStandardMaterial({color:c,metalness:.3,roughness:.25,emissive:c,emissiveIntensity:.55}));
-      const pivot=new THREE.Group();pivot.rotation.set(Math.random()*3,Math.random()*3,0);pivot.add(m);m.position.x=5.4+(i%3)*.9;
-      pivot.userData={sp:.25+Math.random()*.35,self:1+Math.random()*2};hero.add(pivot);gems.push([pivot,m]);
-    });
-    hero.position.set(7,1.5,-4);
-
-    const dot=(()=>{const c=document.createElement('canvas');c.width=c.height=32;const g=c.getContext('2d'),r=g.createRadialGradient(16,16,0,16,16,16);r.addColorStop(0,'#fff');r.addColorStop(.5,'rgba(255,255,255,.8)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(c)})();
-    /* wave floor: a grid of colour-graded points rippling like water */
-    const GX=70,GZ=44,SP=1.6,wp=new Float32Array(GX*GZ*3),wc=new Float32Array(GX*GZ*3);
-    for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){const k=(i*GZ+j)*3;wp[k]=(i-GX/2)*SP;wp[k+2]=(j-GZ/2)*SP-12}
-    const wg=new THREE.BufferGeometry();wg.setAttribute('position',new THREE.BufferAttribute(wp,3));wg.setAttribute('color',new THREE.BufferAttribute(wc,3));
-    const wave=new THREE.Points(wg,new THREE.PointsMaterial({map:dot,size:.4,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));
-    wave.position.y=-4.5;S.add(wave);
-    const cA=new THREE.Color(TEAL),cB=new THREE.Color(PINK),cC=new THREE.Color(GOLD),tmp=new THREE.Color();
-
-    /* confetti-like drifting sparks in many colours */
-    const N=420,sp=new Float32Array(N*3),sc=new Float32Array(N*3),pal=[PINK,TEAL,GOLD,BLUE,VIOL].map(h=>new THREE.Color(h));
-    for(let i=0;i<N;i++){sp[i*3]=(Math.random()-.5)*90;sp[i*3+1]=(Math.random()-.3)*40;sp[i*3+2]=-Math.random()*50+8;const c=pal[i%5];sc[i*3]=c.r;sc[i*3+1]=c.g;sc[i*3+2]=c.b}
-    const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.BufferAttribute(sp,3));sg.setAttribute('color',new THREE.BufferAttribute(sc,3));
-    const sparks=new THREE.Points(sg,new THREE.PointsMaterial({map:dot,size:.5,vertexColors:true,transparent:true,opacity:.85,depthWrite:false}));S.add(sparks);
-
-    let mx=0,my=0,sy=0;
-    addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5},{passive:true});
-    addEventListener('scroll',()=>{sy=Math.min(scrollY/1500,1)},{passive:true});
-    function size(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);C.aspect=w/h;C.updateProjectionMatrix();hero.position.x=w<800?4:9;hero.scale.setScalar(w<800?.55:1)}
+    const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(55,1,.1,200);C.position.set(0,0,16);
+    const gold=0xe2b24c,teal=0x46bdb3,steel=0x6e8fc4;
+    const G=new THREE.Group();S.add(G);
+    const edges=(geo,col,op)=>new THREE.LineSegments(new THREE.EdgesGeometry(geo),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:op}));
+    const ico=edges(new THREE.IcosahedronGeometry(4.2,1),gold,.5);G.add(ico);
+    const oct=edges(new THREE.OctahedronGeometry(2.4,0),teal,.7);G.add(oct);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(6.4,.025,8,120),new THREE.MeshBasicMaterial({color:steel,transparent:true,opacity:.55}));ring.rotation.x=1.2;G.add(ring);
+    const ring2=ring.clone();ring2.scale.setScalar(1.3);ring2.rotation.set(.4,.6,0);G.add(ring2);
+    G.position.set(7,1,-4);
+    const N=520,pos=new Float32Array(N*3);for(let i=0;i<N;i++){const r=14+Math.random()*34,t=Math.random()*6.283,p=Math.acos(2*Math.random()-1);pos[i*3]=r*Math.sin(p)*Math.cos(t);pos[i*3+1]=r*Math.sin(p)*Math.sin(t)*.6;pos[i*3+2]=r*Math.cos(p)-10}
+    const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const pts=new THREE.Points(pg,new THREE.PointsMaterial({color:0xaec4ea,size:.09,transparent:true,opacity:.7}));S.add(pts);
+    const grid=new THREE.GridHelper(120,48,steel,steel);grid.position.y=-9;grid.material.transparent=true;grid.material.opacity=.14;S.add(grid);
+    let mx=0,my=0;window.addEventListener('pointermove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5},{passive:true});
+    function size(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);C.aspect=w/h;C.updateProjectionMatrix();G.position.x=w<800?2:7;G.scale.setScalar(w<800?.7:1)}
     size();addEventListener('resize',size);
-
     const still=matchMedia('(prefers-reduced-motion: reduce)').matches;let t0=performance.now(),run=true;
     function frame(now){if(!run)return;const t=(now-t0)/1000;
-      /* ripple the wave floor */
-      for(let i=0;i<GX;i++)for(let j=0;j<GZ;j++){const k=(i*GZ+j)*3,x=wp[k],z=wp[k+2];
-        const y=Math.sin(x*.28+t*1.1)*.9+Math.cos(z*.33+t*.9)*.8+Math.sin((x+z)*.12+t*.5)*.7;wp[k+1]=y;
-        const h=(y+2.4)/4.8;tmp.copy(cA).lerp(h<.5?cB:cC,Math.min(1,Math.abs(h-.5)*2.2));wc[k]=tmp.r;wc[k+1]=tmp.g;wc[k+2]=tmp.b}
-      wg.attributes.position.needsUpdate=true;wg.attributes.color.needsUpdate=true;
-      knot.rotation.x=t*.22;knot.rotation.y=t*.31;shell.rotation.x=-t*.12;shell.rotation.y=t*.18;
-      gems.forEach(([p,m])=>{p.rotation.z=t*p.userData.sp;p.rotation.y+=.002;m.rotation.x=t*p.userData.self;m.rotation.y=t*p.userData.self*.7});
-      hero.position.y=2+Math.sin(t*.6)*.5;hero.position.z=-6;
-      /* lights circle so colours slide across the knot */
-      L1.position.set(Math.cos(t*.5)*9,6,Math.sin(t*.5)*9);L2.position.set(Math.cos(t*.4+2)*10,-3,Math.sin(t*.4+2)*8);
-      sparks.rotation.y=t*.012;sparks.position.y=Math.sin(t*.3)*.6;
-      C.position.x+=(mx*3-C.position.x)*.04;C.position.y+=(2-my*2-sy*5-C.position.y)*.04;C.lookAt(0,-2-sy*3,-6);
+      ico.rotation.y=t*.12;ico.rotation.x=t*.06;oct.rotation.y=-t*.2;oct.rotation.z=t*.1;ring.rotation.z=t*.05;ring2.rotation.z=-t*.04;pts.rotation.y=t*.008;
+      C.position.x+=(mx*2-C.position.x)*.03;C.position.y+=(-my*1.4-C.position.y)*.03;C.lookAt(0,0,-4);
       R.render(S,C);if(!still)requestAnimationFrame(frame)}
     document.addEventListener('visibilitychange',()=>{run=!document.hidden;if(run&&!still)requestAnimationFrame(frame)});
     requestAnimationFrame(frame);
